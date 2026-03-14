@@ -7,7 +7,7 @@ from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-
+ 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="PollenCH · Switzerland Pollen Alert",
@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
+ 
 # ── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -63,7 +63,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
-
+ 
 # ── Constants ──────────────────────────────────────────────────────────────────
 STATIONS = {
     "Zürich":       {"canton":"ZH","lat":47.376,"lon":8.538},
@@ -82,7 +82,7 @@ STATIONS = {
     "Frauenfeld":   {"canton":"TG","lat":47.556,"lon":8.898},
     "Bellinzona":   {"canton":"TI","lat":46.193,"lon":9.023},
 }
-
+ 
 # Open-Meteo Air Quality API variable names
 POLLEN_PARAMS = {
     "Birch (Birke)":     {"api":"birch_pollen",   "color":"#e74c3c","season":"Mar–May"},
@@ -91,7 +91,7 @@ POLLEN_PARAMS = {
     "Hazel (Hasel)":     {"api":"alder_pollen",   "color":"#f39c12","season":"Jan–Mar"},
     "Alder (Erle)":      {"api":"alder_pollen",   "color":"#2980b9","season":"Feb–Apr"},
 }
-
+ 
 # Thresholds in grains/m³
 THRESHOLDS = {
     "Birch (Birke)":     [1, 10,  50, 200],
@@ -100,9 +100,9 @@ THRESHOLDS = {
     "Hazel (Hasel)":     [1, 10,  50, 150],
     "Alder (Erle)":      [1, 10,  50, 150],
 }
-
+ 
 LEVEL_ORDER = ["none","low","moderate","high","very high"]
-
+ 
 # ── Data fetching ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
 def fetch_pollen(lat: float, lon: float, pollen_vars: list) -> dict | None:
@@ -126,13 +126,13 @@ def fetch_pollen(lat: float, lon: float, pollen_vars: list) -> dict | None:
         return data.get("hourly", None)
     except Exception as e:
         return None
-
+ 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def sensitivity_mult(sensitivity):
     return {"Low (mild symptoms)":0.5,
             "Medium (moderate symptoms)":1.0,
             "High (severe symptoms)":1.5}[sensitivity]
-
+ 
 def get_level(value, thresholds, mult=1.0):
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return "none"
@@ -142,15 +142,15 @@ def get_level(value, thresholds, mult=1.0):
     elif v < thresholds[2]: return "moderate"
     elif v < thresholds[3]: return "high"
     else: return "very high"
-
+ 
 def level_color(level):
     return {"none":"#9e9e9e","low":"#4caf50","moderate":"#ff9800",
             "high":"#e53935","very high":"#8e24aa"}.get(level,"#9e9e9e")
-
+ 
 def level_emoji(level):
     return {"none":"⚪","low":"🟢","moderate":"🟡",
             "high":"🔴","very high":"🟣"}.get(level,"⚪")
-
+ 
 def advice_text(level, pollen_name):
     return {
         "none":     f"✅ No significant {pollen_name} detected. Safe to go outside.",
@@ -159,7 +159,7 @@ def advice_text(level, pollen_name):
         "high":     f"🔴 High {pollen_name}! Limit outdoor time, especially mornings. Shower after being outside.",
         "very high":f"🟣 Very high {pollen_name}! Stay indoors if possible. Use air purifiers and take medication.",
     }.get(level,"")
-
+ 
 def best_time_advice(level):
     if level in ("none","low"):
         return "✅ Any time of day is fine.", "💡 Afternoon is slightly better — pollen disperses more after midday."
@@ -169,7 +169,7 @@ def best_time_advice(level):
         return "🌧️ Best: during or right after rain.", "⛔ Avoid mornings entirely. Evenings (after 19h) are safer."
     else:
         return "🏠 Recommend staying indoors today.", "⛔ All outdoor activities carry high risk."
-
+ 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 🌿 PollenCH Settings")
@@ -192,7 +192,7 @@ with st.sidebar:
     st.markdown("---")
     load_btn = st.button("🔄 Refresh Data", use_container_width=True)
     st.markdown("**Data:** Open-Meteo Air Quality API  \n**Source:** CAMS European forecast  \n**Update:** Every 24h · 5-day forecast  \n**No API key needed** ✅")
-
+ 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="app-header">
@@ -200,35 +200,35 @@ st.markdown("""
   <div class="app-subtitle">Switzerland · Real-time pollen forecast</div>
 </div>
 """, unsafe_allow_html=True)
-
+ 
 if not selected_pollens:
     st.info("👈 Select at least one pollen type in the sidebar to get started.")
     st.stop()
-
+ 
 if load_btn:
     st.cache_data.clear()
-
+ 
 # ── Fetch home city data ───────────────────────────────────────────────────────
 home = STATIONS[selected_city]
 mult = sensitivity_mult(sensitivity)
 api_vars = list({POLLEN_PARAMS[p]["api"] for p in selected_pollens})
-
+ 
 with st.spinner(f"Loading pollen forecast for {selected_city}…"):
     hourly = fetch_pollen(home["lat"], home["lon"], api_vars)
-
+ 
 if not hourly:
     st.error("❌ Could not load pollen data from Open-Meteo. Check your internet connection.")
     st.stop()
-
+ 
 # Parse into DataFrame
 df = pd.DataFrame(hourly)
 df["time"] = pd.to_datetime(df["time"])
 df = df.sort_values("time").reset_index(drop=True)
-
+ 
 # Get today's max value per pollen
 today = datetime.now().date()
 today_df = df[df["time"].dt.date == today]
-
+ 
 today_vals = {}
 for pollen in selected_pollens:
     api_key = POLLEN_PARAMS[pollen]["api"]
@@ -237,10 +237,10 @@ for pollen in selected_pollens:
         today_vals[pollen] = float(vals.max()) if len(vals) > 0 else np.nan
     else:
         today_vals[pollen] = np.nan
-
+ 
 # ── Today's overview ───────────────────────────────────────────────────────────
 st.markdown(f"<div class='section-title'>📍 Today in {selected_city} — {today.strftime('%A %d %B %Y')}</div>", unsafe_allow_html=True)
-
+ 
 cols = st.columns(len(selected_pollens))
 for i, pollen in enumerate(selected_pollens):
     val = today_vals.get(pollen, np.nan)
@@ -257,33 +257,33 @@ for i, pollen in enumerate(selected_pollens):
             <div style="font-size:0.7rem;color:#999;margin-top:0.2rem">Season: {POLLEN_PARAMS[pollen]['season']}</div>
         </div>
         """, unsafe_allow_html=True)
-
+ 
 # ── Daily advice ───────────────────────────────────────────────────────────────
 st.markdown("<div class='section-title'>💡 Your Daily Advice</div>", unsafe_allow_html=True)
-
+ 
 worst_level = "none"
 for pollen in selected_pollens:
     lv = get_level(today_vals.get(pollen, np.nan), THRESHOLDS[pollen], mult)
     if LEVEL_ORDER.index(lv) > LEVEL_ORDER.index(worst_level):
         worst_level = lv
-
+ 
 go_out, avoid = best_time_advice(worst_level)
 c1, c2 = st.columns(2)
 with c1:
     st.markdown(f'<div class="advice-block"><h4>🚪 Should you go outside?</h4><p style="margin:0">{go_out}</p></div>', unsafe_allow_html=True)
 with c2:
     st.markdown(f'<div class="advice-block"><h4>⏰ Best/Worst times today</h4><p style="margin:0">{avoid}</p></div>', unsafe_allow_html=True)
-
+ 
 st.markdown("")
 for pollen in selected_pollens:
     level = get_level(today_vals.get(pollen, np.nan), THRESHOLDS[pollen], mult)
     cls = {"none":"alert-none","low":"alert-low","moderate":"alert-moderate",
            "high":"alert-high","very high":"alert-vhigh"}.get(level,"alert-none")
     st.markdown(f'<div class="alert-card {cls}">{advice_text(level, pollen)}</div>', unsafe_allow_html=True)
-
+ 
 # ── Forecast chart ─────────────────────────────────────────────────────────────
 st.markdown("<div class='section-title'>📈 5-Day Pollen Forecast</div>", unsafe_allow_html=True)
-
+ 
 fig = go.Figure()
 for pollen in selected_pollens:
     api_key = POLLEN_PARAMS[pollen]["api"]
@@ -291,25 +291,26 @@ for pollen in selected_pollens:
         continue
     vals = pd.to_numeric(df[api_key], errors="coerce").clip(lower=0)
     clr = POLLEN_PARAMS[pollen]["color"]
+    r,g,b = int(clr[1:3],16),int(clr[3:5],16),int(clr[5:7],16)
     fig.add_trace(go.Scatter(
         x=df["time"], y=vals, name=pollen,
         line=dict(color=clr, width=2.5),
-        fill="tozeroy", fillcolor=clr+"18",
+        fill="tozeroy", fillcolor=f"rgba({r},{g},{b},0.1)",
         mode="lines",
     ))
-
+ 
 # Add today marker
 now = datetime.now()
 fig.add_vline(x=now, line_dash="dash", line_color="#666", annotation_text="Now",
               annotation_position="top right")
-
+ 
 # Risk bands
 t = THRESHOLDS[selected_pollens[0]]
 fig.add_hrect(y0=0,    y1=t[0], fillcolor="#4caf50", opacity=0.04, line_width=0)
 fig.add_hrect(y0=t[0], y1=t[1], fillcolor="#ffeb3b", opacity=0.05, line_width=0)
 fig.add_hrect(y0=t[1], y1=t[2], fillcolor="#ff9800", opacity=0.05, line_width=0)
 fig.add_hrect(y0=t[2], y1=t[3], fillcolor="#e53935", opacity=0.05, line_width=0)
-
+ 
 fig.update_layout(
     paper_bgcolor="white", plot_bgcolor="white",
     font=dict(family="Inter", size=12),
@@ -319,7 +320,7 @@ fig.update_layout(
     margin=dict(l=10,r=10,t=40,b=10), height=360,
 )
 st.plotly_chart(fig, use_container_width=True)
-
+ 
 # ── 5-day daily summary table ──────────────────────────────────────────────────
 st.markdown("**Daily peak forecast**")
 df["date"] = df["time"].dt.date
@@ -336,13 +337,13 @@ for d in sorted(df["date"].unique()):
         else:
             row[pollen] = "N/A"
     daily_rows.append(row)
-
+ 
 st.dataframe(pd.DataFrame(daily_rows).set_index("Date"), use_container_width=True)
-
+ 
 # ── Switzerland map ────────────────────────────────────────────────────────────
 st.markdown("<div class='section-title'>🗺️ Switzerland Pollen Map</div>", unsafe_allow_html=True)
 st.info("💡 Loading data for all 15 Swiss cities — this takes a few seconds.", icon="ℹ️")
-
+ 
 @st.cache_data(ttl=3600)
 def fetch_all_stations(pollen_vars: tuple) -> dict:
     """Fetch today's peak pollen for all Swiss stations."""
@@ -362,13 +363,13 @@ def fetch_all_stations(pollen_vars: tuple) -> dict:
                     city_vals[var] = 0.0
             results[city] = city_vals
     return results
-
+ 
 with st.spinner("Fetching map data for all Swiss cities…"):
     all_data = fetch_all_stations(tuple(api_vars))
-
+ 
 # Build map
 tab1, tab2 = st.tabs(["🌡️ Heatmap", "📍 Risk Dots"])
-
+ 
 def build_map(mode="heat"):
     m = folium.Map(location=[46.8,8.2], zoom_start=8,
                    tiles="CartoDB positron", control_scale=True)
@@ -397,27 +398,27 @@ def build_map(mode="heat"):
             popup=folium.Popup(popup_html, max_width=200),
             tooltip=f"{city}: {worst}",
         ).add_to(m)
-
+ 
     if mode == "heat":
         HeatMap(heat_pts, radius=55, blur=40, min_opacity=0.3,
                 gradient={"0.0":"#4caf50","0.35":"#ffeb3b",
                           "0.65":"#ff9800","1.0":"#e53935"}).add_to(m)
-
+ 
     # Home marker
     folium.Marker(
         [home["lat"], home["lon"]], tooltip=f"📍 {selected_city}",
         icon=folium.Icon(color="green", icon="home", prefix="fa"),
     ).add_to(m)
     return m
-
+ 
 with tab1:
     st_folium(build_map("heat"), height=460, use_container_width=True)
 with tab2:
     st_folium(build_map("dots"), height=460, use_container_width=True)
-
+ 
 # ── All cities comparison bar chart ───────────────────────────────────────────
 st.markdown("<div class='section-title'>🏔️ All Cities Comparison — Today's Peak</div>", unsafe_allow_html=True)
-
+ 
 cities = list(all_data.keys())
 fig2 = go.Figure()
 for pollen in selected_pollens:
@@ -427,7 +428,7 @@ for pollen in selected_pollens:
         name=pollen, x=cities, y=vals,
         marker_color=POLLEN_PARAMS[pollen]["color"], opacity=0.85,
     ))
-
+ 
 fig2.update_layout(
     barmode="group", paper_bgcolor="white", plot_bgcolor="white",
     font=dict(family="Inter", size=11),
@@ -437,7 +438,7 @@ fig2.update_layout(
     margin=dict(l=10,r=10,t=30,b=90), height=380,
 )
 st.plotly_chart(fig2, use_container_width=True)
-
+ 
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
