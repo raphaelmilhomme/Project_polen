@@ -183,7 +183,7 @@ THRESHOLDS = {
     "Alder (Erle)":     [1, 10,  50,  150],
 }
  
-BASE_URL = "https://data.geo.admin.ch/ch.meteoschweiz.ogd-pollen/zue/ogd-pollen_zue_d_recent.csv"
+BASE_URL = "https://www.meteosuisse.admin.ch/services-et-publications/applications/previsions-polliniques.html#tab=pollen-map&pollen=all"
  
 # ── Data fetching ─────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
