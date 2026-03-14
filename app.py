@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit as st
 import requests
 import pandas as pd
 import numpy as np
@@ -183,26 +182,45 @@ THRESHOLDS = {
     "Alder (Erle)":     [1, 10,  50,  150],
 }
  
-BASE_URL = "https://www.meteosuisse.admin.ch/services-et-publications/applications/previsions-polliniques.html#tab=pollen-map&pollen=all"
+BASE_URL = "https://data.geo.admin.ch/ch.meteoschweiz.ogd-pollen"
  
 # ── Data fetching ─────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
 def fetch_station_data(station_id: str) -> pd.DataFrame | None:
-    """Fetch recent daily pollen data for a station."""
+    """Fetch recent daily pollen data for a station.
+    
+    MeteoSwiss URL pattern:
+    https://data.geo.admin.ch/ch.meteoschweiz.ogd-pollen/{sid}/ogd-pollen_{sid}_d_recent.csv
+    """
     sid = station_id.lower()
-    url = f"{BASE_URL}/ogd-pollen_{sid}_d_recent.csv"
+    url = f"{BASE_URL}/{sid}/ogd-pollen_{sid}_d_recent.csv"
     try:
         r = requests.get(url, timeout=15)
         if r.status_code != 200:
+            # Try uppercase station subfolder as fallback
+            url2 = f"{BASE_URL}/{station_id}/ogd-pollen_{sid}_d_recent.csv"
+            r = requests.get(url2, timeout=15)
+            if r.status_code != 200:
+                return None
+        # MeteoSwiss CSVs: semicolon separated, may have metadata header rows
+        # Try reading with different skiprow values
+        raw = r.text
+        lines = raw.splitlines()
+        # Find the header row (contains 'reference_timestamp' or 'station_abbr' or date-like)
+        header_idx = 0
+        for i, line in enumerate(lines[:10]):
+            if "timestamp" in line.lower() or "station" in line.lower() or "date" in line.lower():
+                header_idx = i
+                break
+        df = pd.read_csv(io.StringIO(raw), sep=";", skiprows=header_idx, on_bad_lines="skip")
+        if df.empty:
             return None
-        df = pd.read_csv(io.StringIO(r.text), sep=";", skiprows=0)
-        # MeteoSwiss CSV: first col is date/time, remaining are parameters
-        # Try to detect date column
+        # Detect date column
         date_col = df.columns[0]
-        df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+        df[date_col] = pd.to_datetime(df[date_col], dayfirst=True, errors="coerce")
         df = df.dropna(subset=[date_col])
         df = df.rename(columns={date_col: "date"})
-        df = df.sort_values("date")
+        df = df.sort_values("date").reset_index(drop=True)
         return df
     except Exception:
         return None
@@ -325,7 +343,15 @@ with st.spinner("Loading MeteoSwiss pollen data…"):
  
 if not station_dfs:
     st.error("Could not load MeteoSwiss data. Please try again later.")
+    test_sid = list(STATIONS.keys())[0].lower()
+    st.code(f"URL tried: https://data.geo.admin.ch/ch.meteoschweiz.ogd-pollen/{test_sid}/ogd-pollen_{test_sid}_d_recent.csv")
+    st.info("Paste that URL in your browser. If it downloads a CSV, the issue is your network/firewall blocking Streamlit outbound requests.")
     st.stop()
+ 
+with st.expander("🔧 Debug info (expand if something looks wrong)"):
+    st.write(f"Loaded **{len(station_dfs)}/16** stations successfully.")
+    for sid, df in list(station_dfs.items())[:3]:
+        st.write(f"**{sid}** — {len(df)} rows | columns: {list(df.columns[:8])}")
  
 home_df = station_dfs.get(selected_station)
 home_info = STATIONS[selected_station]
