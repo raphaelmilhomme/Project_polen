@@ -7,8 +7,6 @@ from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import io
-import json
  
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -24,7 +22,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .stApp { background: #f5f2eb; color: #1a1a1a; }
-[data-testid="stSidebar"] { background: #1c2b1c !important; border-right: none; }
+[data-testid="stSidebar"] { background: #1c2b1c !important; }
 [data-testid="stSidebar"] * { color: #d4e8d4 !important; }
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stSlider label,
@@ -41,61 +39,60 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .app-title span { color:#6dbf6d; }
 .app-subtitle { font-size:0.9rem; color:#7aaa7a; margin-top:0.4rem;
     letter-spacing:0.05em; text-transform:uppercase; }
-.alert-card { border-radius:1rem; padding:1.2rem 1.5rem; margin-bottom:1rem;
-    font-size:1rem; font-weight:500; border-left:5px solid;
-    display:flex; align-items:center; gap:0.8rem; }
-.alert-low    { background:#e8f5e8; border-color:#4caf50; color:#1b5e20; }
-.alert-moderate{ background:#fff8e1; border-color:#ff9800; color:#e65100; }
-.alert-high   { background:#fce4ec; border-color:#e53935; color:#b71c1c; }
-.alert-vhigh  { background:#f3e5f5; border-color:#8e24aa; color:#4a148c; }
-.alert-none   { background:#f5f5f5; border-color:#9e9e9e; color:#424242; }
 .stat-card { background:white; border-radius:1rem; padding:1.2rem; text-align:center;
-    box-shadow:0 2px 12px rgba(0,0,0,0.06); border:1px solid #e8e8e8; }
+    box-shadow:0 2px 12px rgba(0,0,0,0.06); border:1px solid #e8e8e8; margin-bottom:0.5rem; }
 .stat-card .value { font-family:'Syne',sans-serif; font-size:2rem; font-weight:700; line-height:1; }
 .stat-card .label { font-size:0.75rem; text-transform:uppercase;
     letter-spacing:0.08em; color:#777; margin-top:0.3rem; }
 .section-title { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:700;
     color:#1c2b1c; margin:1.5rem 0 0.8rem; padding-bottom:0.4rem;
     border-bottom:2px solid #c5dfc5; }
+.alert-card { border-radius:1rem; padding:1.2rem 1.5rem; margin-bottom:0.8rem;
+    font-size:0.95rem; font-weight:500; border-left:5px solid; }
+.alert-none     { background:#f5f5f5; border-color:#9e9e9e; color:#424242; }
+.alert-low      { background:#e8f5e8; border-color:#4caf50; color:#1b5e20; }
+.alert-moderate { background:#fff8e1; border-color:#ff9800; color:#e65100; }
+.alert-high     { background:#fce4ec; border-color:#e53935; color:#b71c1c; }
+.alert-vhigh    { background:#f3e5f5; border-color:#8e24aa; color:#4a148c; }
 .advice-block { background:white; border-radius:1rem; padding:1.5rem;
     box-shadow:0 2px 12px rgba(0,0,0,0.06); border:1px solid #e8e8e8; }
-.advice-block h4 { font-family:'Syne',sans-serif; color:#1c2b1c; margin:0 0 0.8rem; font-size:1rem; }
+.advice-block h4 { font-family:'Syne',sans-serif; color:#1c2b1c; margin:0 0 0.8rem; }
 .stButton > button { background:#2e5c2e !important; color:white !important;
     border:none !important; border-radius:0.6rem !important;
-    font-family:'Syne',sans-serif !important; font-weight:600 !important;
-    letter-spacing:0.03em !important; padding:0.5rem 1.5rem !important; }
-.stButton > button:hover { background:#3a7a3a !important; }
+    font-family:'Syne',sans-serif !important; font-weight:600 !important; }
 footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
  
 # ── Constants ──────────────────────────────────────────────────────────────────
 STATIONS = {
-    "BAS": {"name": "Basel",           "canton": "BS", "lat": 47.541, "lon": 7.588},
-    "BER": {"name": "Bern/Zollikofen", "canton": "BE", "lat": 46.991, "lon": 7.467},
-    "BUE": {"name": "Buchs/Aarau",     "canton": "AG", "lat": 47.387, "lon": 8.073},
-    "DAV": {"name": "Davos",           "canton": "GR", "lat": 46.813, "lon": 9.844},
-    "GEN": {"name": "Genève",          "canton": "GE", "lat": 46.238, "lon": 6.108},
-    "LAE": {"name": "Laegern",         "canton": "AG", "lat": 47.482, "lon": 8.398},
-    "LUG": {"name": "Lugano",          "canton": "TI", "lat": 46.004, "lon": 8.960},
-    "LUZ": {"name": "Luzern",          "canton": "LU", "lat": 47.036, "lon": 8.301},
-    "NEU": {"name": "Neuchâtel",       "canton": "NE", "lat": 46.998, "lon": 6.957},
-    "PAY": {"name": "Payerne",         "canton": "VD", "lat": 46.812, "lon": 6.944},
-    "PLS": {"name": "Lausanne",        "canton": "VD", "lat": 46.537, "lon": 6.613},
-    "SIO": {"name": "Sion",            "canton": "VS", "lat": 46.217, "lon": 7.340},
-    "STG": {"name": "St. Gallen",      "canton": "SG", "lat": 47.430, "lon": 9.400},
-    "VIT": {"name": "Visp",            "canton": "VS", "lat": 46.295, "lon": 7.883},
-    "ZUE": {"name": "Zürich",          "canton": "ZH", "lat": 47.376, "lon": 8.538},
+    "Zürich":       {"canton":"ZH","lat":47.376,"lon":8.538},
+    "Bern":         {"canton":"BE","lat":46.948,"lon":7.447},
+    "Basel":        {"canton":"BS","lat":47.560,"lon":7.589},
+    "Geneva":       {"canton":"GE","lat":46.204,"lon":6.143},
+    "Lausanne":     {"canton":"VD","lat":46.519,"lon":6.633},
+    "Luzern":       {"canton":"LU","lat":47.050,"lon":8.309},
+    "St. Gallen":   {"canton":"SG","lat":47.422,"lon":9.369},
+    "Lugano":       {"canton":"TI","lat":46.004,"lon":8.960},
+    "Sion":         {"canton":"VS","lat":46.233,"lon":7.360},
+    "Davos":        {"canton":"GR","lat":46.813,"lon":9.844},
+    "Neuchâtel":    {"canton":"NE","lat":47.000,"lon":6.944},
+    "Aarau":        {"canton":"AG","lat":47.392,"lon":8.044},
+    "Chur":         {"canton":"GR","lat":46.852,"lon":9.533},
+    "Frauenfeld":   {"canton":"TG","lat":47.556,"lon":8.898},
+    "Bellinzona":   {"canton":"TI","lat":46.193,"lon":9.023},
 }
  
+# Open-Meteo Air Quality API variable names
 POLLEN_PARAMS = {
-    "Birch (Birke)":     {"code": "BETU", "color": "#e74c3c", "season": "Mar–May"},
-    "Grass (Gräser)":    {"code": "POAC", "color": "#27ae60", "season": "May–Aug"},
-    "Mugwort (Beifuss)": {"code": "ARTV", "color": "#8e44ad", "season": "Jul–Sep"},
-    "Hazel (Hasel)":     {"code": "CORY", "color": "#f39c12", "season": "Jan–Mar"},
-    "Alder (Erle)":      {"code": "ALNU", "color": "#2980b9", "season": "Feb–Apr"},
+    "Birch (Birke)":     {"api":"birch_pollen",   "color":"#e74c3c","season":"Mar–May"},
+    "Grass (Gräser)":    {"api":"grass_pollen",   "color":"#27ae60","season":"May–Aug"},
+    "Mugwort (Beifuss)": {"api":"mugwort_pollen", "color":"#8e44ad","season":"Jul–Sep"},
+    "Hazel (Hasel)":     {"api":"alder_pollen",   "color":"#f39c12","season":"Jan–Mar"},
+    "Alder (Erle)":      {"api":"alder_pollen",   "color":"#2980b9","season":"Feb–Apr"},
 }
  
+# Thresholds in grains/m³
 THRESHOLDS = {
     "Birch (Birke)":     [1, 10,  50, 200],
     "Grass (Gräser)":    [1, 10,  50, 200],
@@ -104,77 +101,42 @@ THRESHOLDS = {
     "Alder (Erle)":      [1, 10,  50, 150],
 }
  
-STAC_COLLECTION = "ch.meteoschweiz.ogd-pollen"
-STAC_BASE = "https://data.geo.admin.ch/api/stac/v1"
+LEVEL_ORDER = ["none","low","moderate","high","very high"]
  
-# ── Data fetching via STAC API ─────────────────────────────────────────────────
+# ── Data fetching ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
-def get_asset_urls() -> dict:
+def fetch_pollen(lat: float, lon: float, pollen_vars: list) -> dict | None:
     """
-    Query the STAC API to get actual download URLs for each station's
-    daily recent CSV file. Returns dict: {station_id_lower: url}
+    Fetch hourly pollen forecast from Open-Meteo Air Quality API.
+    Returns dict with 'time' and one key per pollen variable.
+    Free, no API key needed, works globally.
     """
-    url = f"{STAC_BASE}/collections/{STAC_COLLECTION}/items?limit=200"
+    variables = ",".join(set(pollen_vars))
+    url = (
+        f"https://air-quality-api.open-meteo.com/v1/air-quality"
+        f"?latitude={lat}&longitude={lon}"
+        f"&hourly={variables}"
+        f"&forecast_days=5"
+        f"&timezone=Europe%2FZurich"
+    )
     try:
-        r = requests.get(url, timeout=20, headers={"User-Agent": "PollenCH-App/1.0"})
+        r = requests.get(url, timeout=15)
         r.raise_for_status()
-        features = r.json().get("features", [])
-        asset_map = {}
-        for feature in features:
-            assets = feature.get("assets", {})
-            for asset_key, asset_val in assets.items():
-                href = asset_val.get("href", "")
-                # We want daily (d) recent files, e.g. ogd-pollen_zue_d_recent.csv
-                if "_d_recent" in href and href.endswith(".csv"):
-                    # Extract station ID from filename
-                    fname = href.split("/")[-1]  # ogd-pollen_zue_d_recent.csv
-                    parts = fname.replace(".csv", "").split("_")
-                    if len(parts) >= 3:
-                        sid = parts[2].upper()  # ZUE, BER, etc.
-                        asset_map[sid] = href
-        return asset_map
+        data = r.json()
+        return data.get("hourly", None)
     except Exception as e:
-        return {"_error": str(e)}
- 
-@st.cache_data(ttl=3600)
-def fetch_station_data(station_id: str, url: str) -> pd.DataFrame | None:
-    """Download and parse a MeteoSwiss pollen CSV from a known URL."""
-    try:
-        r = requests.get(url, timeout=20, headers={"User-Agent": "PollenCH-App/1.0"})
-        if r.status_code != 200:
-            return None
-        raw = r.text
-        # MeteoSwiss format: semicolon separated, date format dd.mm.yyyy
-        # First row is header
-        df = pd.read_csv(io.StringIO(raw), sep=";", on_bad_lines="skip")
-        if df.empty or len(df.columns) < 2:
-            return None
-        # First column is the date/time reference
-        date_col = df.columns[0]
-        df[date_col] = pd.to_datetime(df[date_col], dayfirst=True, errors="coerce")
-        df = df.dropna(subset=[date_col])
-        df = df.rename(columns={date_col: "date"})
-        df = df.sort_values("date").reset_index(drop=True)
-        # Convert all other columns to numeric
-        for col in df.columns:
-            if col != "date":
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-        return df
-    except Exception:
         return None
  
 # ── Helpers ────────────────────────────────────────────────────────────────────
-LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
- 
 def sensitivity_mult(sensitivity):
-    return {"Low (mild symptoms)": 0.5,
-            "Medium (moderate symptoms)": 1.0,
-            "High (severe symptoms)": 1.5}[sensitivity]
+    return {"Low (mild symptoms)":0.5,
+            "Medium (moderate symptoms)":1.0,
+            "High (severe symptoms)":1.5}[sensitivity]
  
 def get_level(value, thresholds, mult=1.0):
-    if pd.isna(value) or value < 0:
+    if value is None or (isinstance(value, float) and np.isnan(value)):
         return "none"
-    v = value * mult
+    v = float(value) * mult
     if v < thresholds[0]: return "none"
     elif v < thresholds[1]: return "low"
     elif v < thresholds[2]: return "moderate"
@@ -190,22 +152,21 @@ def level_emoji(level):
             "high":"🔴","very high":"🟣"}.get(level,"⚪")
  
 def advice_text(level, pollen_name):
-    msgs = {
-        "none":      f"✅ No significant {pollen_name} detected. Safe to go outside.",
-        "low":       f"🟢 Low {pollen_name}. Outdoor activities fine. Consider antihistamines if sensitive.",
-        "moderate":  f"🟡 Moderate {pollen_name}. Keep windows closed mornings (06–10h). Pre-medicate before going out.",
-        "high":      f"🔴 High {pollen_name}! Limit outdoor time, especially mornings. Wear sunglasses. Shower after being outside.",
-        "very high": f"🟣 Very high {pollen_name}! Stay indoors if possible. Use air purifiers. Take prescribed medication.",
-    }
-    return msgs.get(level, "")
+    return {
+        "none":     f"✅ No significant {pollen_name} detected. Safe to go outside.",
+        "low":      f"🟢 Low {pollen_name}. Fine for most people. Consider antihistamines if sensitive.",
+        "moderate": f"🟡 Moderate {pollen_name}. Keep windows closed 06–10h. Pre-medicate before going out.",
+        "high":     f"🔴 High {pollen_name}! Limit outdoor time, especially mornings. Shower after being outside.",
+        "very high":f"🟣 Very high {pollen_name}! Stay indoors if possible. Use air purifiers and take medication.",
+    }.get(level,"")
  
 def best_time_advice(level):
     if level in ("none","low"):
-        return "✅ Any time of day is fine.", "💡 Afternoon slightly better — pollen disperses more after midday."
+        return "✅ Any time of day is fine.", "💡 Afternoon is slightly better — pollen disperses more after midday."
     elif level == "moderate":
         return "🕒 Best: afternoon (14–18h) or after rain.", "⚠️ Avoid mornings (06–10h) — peak dispersal time."
     elif level == "high":
-        return "🌧️ Best: during or right after rain.", "⛔ Avoid mornings entirely. Evenings (after 19h) safer."
+        return "🌧️ Best: during or right after rain.", "⛔ Avoid mornings entirely. Evenings (after 19h) are safer."
     else:
         return "🏠 Recommend staying indoors today.", "⛔ All outdoor activities carry high risk."
  
@@ -220,24 +181,23 @@ with st.sidebar:
     )
     sensitivity = st.select_slider(
         "Your sensitivity level",
-        options=["Low (mild symptoms)", "Medium (moderate symptoms)", "High (severe symptoms)"],
+        options=["Low (mild symptoms)","Medium (moderate symptoms)","High (severe symptoms)"],
         value="Medium (moderate symptoms)",
     )
-    selected_station = st.selectbox(
-        "Your location (nearest station)",
+    selected_city = st.selectbox(
+        "Your location",
         options=list(STATIONS.keys()),
-        format_func=lambda x: f"{STATIONS[x]['name']} ({STATIONS[x]['canton']})",
-        index=list(STATIONS.keys()).index("ZUE"),
+        index=0,
     )
     st.markdown("---")
     load_btn = st.button("🔄 Refresh Data", use_container_width=True)
-    st.markdown("**Data:** MeteoSwiss OGD  \n**Update:** Daily at 12 UTC  \n**Stations:** 15 across CH")
+    st.markdown("**Data:** Open-Meteo Air Quality API  \n**Source:** CAMS European forecast  \n**Update:** Every 24h · 5-day forecast  \n**No API key needed** ✅")
  
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="app-header">
   <div class="app-title">Pollen<span>CH</span></div>
-  <div class="app-subtitle">Switzerland · Real-time pollen monitoring</div>
+  <div class="app-subtitle">Switzerland · Real-time pollen forecast</div>
 </div>
 """, unsafe_allow_html=True)
  
@@ -245,60 +205,49 @@ if not selected_pollens:
     st.info("👈 Select at least one pollen type in the sidebar to get started.")
     st.stop()
  
-# ── Load data ──────────────────────────────────────────────────────────────────
 if load_btn:
     st.cache_data.clear()
  
-with st.spinner("🔍 Querying MeteoSwiss STAC API for download URLs…"):
-    asset_urls = get_asset_urls()
- 
-if "_error" in asset_urls:
-    st.error(f"Could not connect to MeteoSwiss STAC API: {asset_urls['_error']}")
-    st.info("Make sure your machine has internet access and can reach data.geo.admin.ch")
-    st.stop()
- 
-if not asset_urls:
-    st.error("MeteoSwiss STAC API returned no pollen file URLs.")
-    st.stop()
- 
-with st.spinner(f"📥 Downloading data for {len(asset_urls)} stations…"):
-    station_dfs = {}
-    for sid, url in asset_urls.items():
-        if sid in STATIONS:
-            df = fetch_station_data(sid, url)
-            if df is not None and not df.empty:
-                station_dfs[sid] = df
- 
-if not station_dfs:
-    st.error("Downloaded URLs but could not parse any station CSV data.")
-    with st.expander("Debug: asset URLs found"):
-        for k, v in asset_urls.items():
-            st.write(f"`{k}`: {v}")
-    st.stop()
- 
-home_df = station_dfs.get(selected_station)
-home_info = STATIONS[selected_station]
- 
+# ── Fetch home city data ───────────────────────────────────────────────────────
+home = STATIONS[selected_city]
 mult = sensitivity_mult(sensitivity)
+api_vars = list({POLLEN_PARAMS[p]["api"] for p in selected_pollens})
  
-# ── Today's values ─────────────────────────────────────────────────────────────
-st.markdown(f"<div class='section-title'>📍 Today at {home_info['name']}</div>", unsafe_allow_html=True)
+with st.spinner(f"Loading pollen forecast for {selected_city}…"):
+    hourly = fetch_pollen(home["lat"], home["lon"], api_vars)
+ 
+if not hourly:
+    st.error("❌ Could not load pollen data from Open-Meteo. Check your internet connection.")
+    st.stop()
+ 
+# Parse into DataFrame
+df = pd.DataFrame(hourly)
+df["time"] = pd.to_datetime(df["time"])
+df = df.sort_values("time").reset_index(drop=True)
+ 
+# Get today's max value per pollen
+today = datetime.now().date()
+today_df = df[df["time"].dt.date == today]
  
 today_vals = {}
-if home_df is not None and not home_df.empty:
-    latest_row = home_df.iloc[-1]
-    for pollen in selected_pollens:
-        code = POLLEN_PARAMS[pollen]["code"]
-        col = next((c for c in home_df.columns if code.upper() in c.upper()), None)
-        today_vals[pollen] = float(latest_row[col]) if col and not pd.isna(latest_row[col]) else np.nan
+for pollen in selected_pollens:
+    api_key = POLLEN_PARAMS[pollen]["api"]
+    if api_key in today_df.columns:
+        vals = pd.to_numeric(today_df[api_key], errors="coerce").dropna()
+        today_vals[pollen] = float(vals.max()) if len(vals) > 0 else np.nan
+    else:
+        today_vals[pollen] = np.nan
+ 
+# ── Today's overview ───────────────────────────────────────────────────────────
+st.markdown(f"<div class='section-title'>📍 Today in {selected_city} — {today.strftime('%A %d %B %Y')}</div>", unsafe_allow_html=True)
  
 cols = st.columns(len(selected_pollens))
 for i, pollen in enumerate(selected_pollens):
     val = today_vals.get(pollen, np.nan)
     level = get_level(val, THRESHOLDS[pollen], mult)
     color = level_color(level)
-    display_val = f"{val:.0f}" if not pd.isna(val) else "N/A"
-    unit = " gr/m³" if not pd.isna(val) else ""
+    display_val = f"{val:.0f}" if not np.isnan(val) else "N/A"
+    unit = " gr/m³" if not np.isnan(val) else ""
     with cols[i]:
         st.markdown(f"""
         <div class="stat-card">
@@ -314,87 +263,151 @@ st.markdown("<div class='section-title'>💡 Your Daily Advice</div>", unsafe_al
  
 worst_level = "none"
 for pollen in selected_pollens:
-    val = today_vals.get(pollen, np.nan)
-    lv = get_level(val, THRESHOLDS[pollen], mult)
+    lv = get_level(today_vals.get(pollen, np.nan), THRESHOLDS[pollen], mult)
     if LEVEL_ORDER.index(lv) > LEVEL_ORDER.index(worst_level):
         worst_level = lv
  
 go_out, avoid = best_time_advice(worst_level)
-adv1, adv2 = st.columns(2)
-with adv1:
-    st.markdown(f"""<div class="advice-block"><h4>🚪 Should you go outside?</h4>
-    <p style="margin:0;font-size:0.95rem">{go_out}</p></div>""", unsafe_allow_html=True)
-with adv2:
-    st.markdown(f"""<div class="advice-block"><h4>⏰ Best/Worst times today</h4>
-    <p style="margin:0;font-size:0.95rem">{avoid}</p></div>""", unsafe_allow_html=True)
+c1, c2 = st.columns(2)
+with c1:
+    st.markdown(f'<div class="advice-block"><h4>🚪 Should you go outside?</h4><p style="margin:0">{go_out}</p></div>', unsafe_allow_html=True)
+with c2:
+    st.markdown(f'<div class="advice-block"><h4>⏰ Best/Worst times today</h4><p style="margin:0">{avoid}</p></div>', unsafe_allow_html=True)
  
 st.markdown("")
 for pollen in selected_pollens:
-    val = today_vals.get(pollen, np.nan)
-    level = get_level(val, THRESHOLDS[pollen], mult)
+    level = get_level(today_vals.get(pollen, np.nan), THRESHOLDS[pollen], mult)
     cls = {"none":"alert-none","low":"alert-low","moderate":"alert-moderate",
            "high":"alert-high","very high":"alert-vhigh"}.get(level,"alert-none")
-    st.markdown(f'<div class="alert-card {cls}">{advice_text(level, pollen)}</div>',
-                unsafe_allow_html=True)
+    st.markdown(f'<div class="alert-card {cls}">{advice_text(level, pollen)}</div>', unsafe_allow_html=True)
  
-# ── Map ────────────────────────────────────────────────────────────────────────
-st.markdown("<div class='section-title'>🗺️ Switzerland Pollen Map</div>", unsafe_allow_html=True)
+# ── Forecast chart ─────────────────────────────────────────────────────────────
+st.markdown("<div class='section-title'>📈 5-Day Pollen Forecast</div>", unsafe_allow_html=True)
  
-# Build map data
-map_rows = []
-for sid, sinfo in STATIONS.items():
-    df = station_dfs.get(sid)
-    if df is None or df.empty:
+fig = go.Figure()
+for pollen in selected_pollens:
+    api_key = POLLEN_PARAMS[pollen]["api"]
+    if api_key not in df.columns:
         continue
-    latest = df.iloc[-1]
+    vals = pd.to_numeric(df[api_key], errors="coerce").clip(lower=0)
+    clr = POLLEN_PARAMS[pollen]["color"]
+    fig.add_trace(go.Scatter(
+        x=df["time"], y=vals, name=pollen,
+        line=dict(color=clr, width=2.5),
+        fill="tozeroy", fillcolor=clr+"18",
+        mode="lines",
+    ))
+ 
+# Add today marker
+now = datetime.now()
+fig.add_vline(x=now, line_dash="dash", line_color="#666", annotation_text="Now",
+              annotation_position="top right")
+ 
+# Risk bands
+t = THRESHOLDS[selected_pollens[0]]
+fig.add_hrect(y0=0,    y1=t[0], fillcolor="#4caf50", opacity=0.04, line_width=0)
+fig.add_hrect(y0=t[0], y1=t[1], fillcolor="#ffeb3b", opacity=0.05, line_width=0)
+fig.add_hrect(y0=t[1], y1=t[2], fillcolor="#ff9800", opacity=0.05, line_width=0)
+fig.add_hrect(y0=t[2], y1=t[3], fillcolor="#e53935", opacity=0.05, line_width=0)
+ 
+fig.update_layout(
+    paper_bgcolor="white", plot_bgcolor="white",
+    font=dict(family="Inter", size=12),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+    xaxis=dict(title="", gridcolor="#f0f0f0"),
+    yaxis=dict(title="Pollen (grains/m³)", gridcolor="#f0f0f0"),
+    margin=dict(l=10,r=10,t=40,b=10), height=360,
+)
+st.plotly_chart(fig, use_container_width=True)
+ 
+# ── 5-day daily summary table ──────────────────────────────────────────────────
+st.markdown("**Daily peak forecast**")
+df["date"] = df["time"].dt.date
+daily_rows = []
+for d in sorted(df["date"].unique()):
+    day_data = df[df["date"] == d]
+    row = {"Date": pd.Timestamp(d).strftime("%a %d %b")}
     for pollen in selected_pollens:
-        code = POLLEN_PARAMS[pollen]["code"]
-        col = next((c for c in df.columns if code.upper() in c.upper()), None)
-        val = float(latest[col]) if col and not pd.isna(latest.get(col, np.nan)) else 0.0
-        level = get_level(val, THRESHOLDS[pollen], mult)
-        map_rows.append({"station":sid,"name":sinfo["name"],"canton":sinfo["canton"],
-                         "lat":sinfo["lat"],"lon":sinfo["lon"],
-                         "pollen":pollen,"value":max(val,0),"level":level})
+        api_key = POLLEN_PARAMS[pollen]["api"]
+        if api_key in day_data.columns:
+            peak = pd.to_numeric(day_data[api_key], errors="coerce").max()
+            lv = get_level(peak, THRESHOLDS[pollen], mult)
+            row[pollen] = f"{level_emoji(lv)} {peak:.0f} gr/m³" if not np.isnan(peak) else "N/A"
+        else:
+            row[pollen] = "N/A"
+    daily_rows.append(row)
  
-map_df = pd.DataFrame(map_rows)
+st.dataframe(pd.DataFrame(daily_rows).set_index("Date"), use_container_width=True)
  
-tab1, tab2 = st.tabs(["🌡️ Heatmap", "📍 Station Risk Dots"])
+# ── Switzerland map ────────────────────────────────────────────────────────────
+st.markdown("<div class='section-title'>🗺️ Switzerland Pollen Map</div>", unsafe_allow_html=True)
+st.info("💡 Loading data for all 15 Swiss cities — this takes a few seconds.", icon="ℹ️")
+ 
+@st.cache_data(ttl=3600)
+def fetch_all_stations(pollen_vars: tuple) -> dict:
+    """Fetch today's peak pollen for all Swiss stations."""
+    results = {}
+    for city, info in STATIONS.items():
+        data = fetch_pollen(info["lat"], info["lon"], list(pollen_vars))
+        if data:
+            tdf = pd.DataFrame(data)
+            tdf["time"] = pd.to_datetime(tdf["time"])
+            today_data = tdf[tdf["time"].dt.date == datetime.now().date()]
+            city_vals = {}
+            for var in pollen_vars:
+                if var in today_data.columns:
+                    peak = pd.to_numeric(today_data[var], errors="coerce").max()
+                    city_vals[var] = float(peak) if not np.isnan(peak) else 0.0
+                else:
+                    city_vals[var] = 0.0
+            results[city] = city_vals
+    return results
+ 
+with st.spinner("Fetching map data for all Swiss cities…"):
+    all_data = fetch_all_stations(tuple(api_vars))
+ 
+# Build map
+tab1, tab2 = st.tabs(["🌡️ Heatmap", "📍 Risk Dots"])
  
 def build_map(mode="heat"):
     m = folium.Map(location=[46.8,8.2], zoom_start=8,
                    tiles="CartoDB positron", control_scale=True)
-    if map_df.empty:
-        return m
-    agg = map_df.groupby(["station","name","canton","lat","lon"]).agg(
-        total_value=("value","sum"),
-        worst_level=("level", lambda x: sorted(x, key=lambda l: LEVEL_ORDER.index(l))[-1])
-    ).reset_index()
+    heat_pts = []
+    for city, info in STATIONS.items():
+        city_vals = all_data.get(city, {})
+        total = 0.0
+        worst = "none"
+        for pollen in selected_pollens:
+            api_key = POLLEN_PARAMS[pollen]["api"]
+            val = city_vals.get(api_key, 0.0)
+            total += val
+            lv = get_level(val, THRESHOLDS[pollen], mult)
+            if LEVEL_ORDER.index(lv) > LEVEL_ORDER.index(worst):
+                worst = lv
+        heat_pts.append([info["lat"], info["lon"], min(total, 400)])
+        clr = level_color(worst)
+        popup_html = (f"<div style='font-family:sans-serif'>"
+                      f"<b>{city}</b> ({info['canton']})<br>"
+                      f"<b style='color:{clr}'>{worst.upper()}</b><br>"
+                      f"Combined: {total:.0f} gr/m³</div>")
+        folium.CircleMarker(
+            location=[info["lat"], info["lon"]], radius=13,
+            color="white", weight=2, fill=True,
+            fill_color=clr, fill_opacity=0.85,
+            popup=folium.Popup(popup_html, max_width=200),
+            tooltip=f"{city}: {worst}",
+        ).add_to(m)
  
     if mode == "heat":
-        heat_data = [[r.lat, r.lon, min(r.total_value, 400)] for r in agg.itertuples()]
-        HeatMap(heat_data, radius=60, blur=40, min_opacity=0.3,
+        HeatMap(heat_pts, radius=55, blur=40, min_opacity=0.3,
                 gradient={"0.0":"#4caf50","0.35":"#ffeb3b",
                           "0.65":"#ff9800","1.0":"#e53935"}).add_to(m)
  
-    for r in agg.itertuples():
-        clr = level_color(r.worst_level)
-        popup_html = (f"<div style='font-family:sans-serif;min-width:160px'>"
-                      f"<b style='font-size:1rem'>{r.name}</b><br>"
-                      f"<span style='color:#777;font-size:0.8rem'>Canton {r.canton}</span>"
-                      f"<hr style='margin:4px 0'>"
-                      f"<b style='color:{clr}'>{r.worst_level.upper()}</b> risk<br>"
-                      f"<span style='font-size:0.8rem'>Combined: {r.total_value:.0f} gr/m³</span></div>")
-        folium.CircleMarker(
-            location=[r.lat, r.lon], radius=14,
-            color="white", weight=2, fill=True,
-            fill_color=clr, fill_opacity=0.85,
-            popup=folium.Popup(popup_html, max_width=220),
-            tooltip=f"{r.name}: {r.worst_level}",
-        ).add_to(m)
- 
-    home = STATIONS[selected_station]
-    folium.Marker([home["lat"],home["lon"]], tooltip="📍 Your location",
-                  icon=folium.Icon(color="green",icon="home",prefix="fa")).add_to(m)
+    # Home marker
+    folium.Marker(
+        [home["lat"], home["lon"]], tooltip=f"📍 {selected_city}",
+        icon=folium.Icon(color="green", icon="home", prefix="fa"),
+    ).add_to(m)
     return m
  
 with tab1:
@@ -402,108 +415,35 @@ with tab1:
 with tab2:
     st_folium(build_map("dots"), height=460, use_container_width=True)
  
-# ── Trend chart ────────────────────────────────────────────────────────────────
-st.markdown("<div class='section-title'>📈 Trend & 5-Day Seasonal Outlook</div>", unsafe_allow_html=True)
+# ── All cities comparison bar chart ───────────────────────────────────────────
+st.markdown("<div class='section-title'>🏔️ All Cities Comparison — Today's Peak</div>", unsafe_allow_html=True)
  
-if home_df is not None and not home_df.empty:
-    recent = home_df.tail(30).copy()
-    fig = go.Figure()
+cities = list(all_data.keys())
+fig2 = go.Figure()
+for pollen in selected_pollens:
+    api_key = POLLEN_PARAMS[pollen]["api"]
+    vals = [all_data.get(city, {}).get(api_key, 0.0) for city in cities]
+    fig2.add_trace(go.Bar(
+        name=pollen, x=cities, y=vals,
+        marker_color=POLLEN_PARAMS[pollen]["color"], opacity=0.85,
+    ))
  
-    for pollen in selected_pollens:
-        code = POLLEN_PARAMS[pollen]["code"]
-        col = next((c for c in home_df.columns if code.upper() in c.upper()), None)
-        if not col:
-            continue
-        vals = pd.to_numeric(recent[col], errors="coerce").clip(lower=0)
-        clr = POLLEN_PARAMS[pollen]["color"]
-        fig.add_trace(go.Scatter(
-            x=recent["date"], y=vals, name=pollen,
-            line=dict(color=clr, width=2.5),
-            fill="tozeroy", fillcolor=clr+"18",
-            mode="lines+markers", marker=dict(size=5),
-        ))
- 
-    t = THRESHOLDS[selected_pollens[0]]
-    fig.add_hrect(y0=0,    y1=t[0], fillcolor="#4caf50", opacity=0.04, line_width=0)
-    fig.add_hrect(y0=t[0], y1=t[1], fillcolor="#ffeb3b", opacity=0.06, line_width=0)
-    fig.add_hrect(y0=t[1], y1=t[2], fillcolor="#ff9800", opacity=0.06, line_width=0)
-    fig.add_hrect(y0=t[2], y1=t[3], fillcolor="#e53935", opacity=0.06, line_width=0)
- 
-    fig.update_layout(
-        paper_bgcolor="white", plot_bgcolor="white",
-        font=dict(family="Inter", size=12),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-        xaxis=dict(title="Date", gridcolor="#f0f0f0"),
-        yaxis=dict(title="Pollen concentration (grains/m³)", gridcolor="#f0f0f0"),
-        margin=dict(l=10,r=10,t=40,b=10), height=360,
-    )
-    st.plotly_chart(fig, use_container_width=True)
- 
-    # 5-day seasonal outlook
-    st.markdown(f"**5-day seasonal outlook** — historical averages for this time of year at {home_info['name']}")
-    today = datetime.today()
-    doy = today.timetuple().tm_yday
-    home_df["doy"] = home_df["date"].dt.dayofyear
- 
-    rows = []
-    for offset in range(1, 6):
-        future = today + timedelta(days=offset)
-        target_doy = (doy + offset) % 365
-        row = {"Date": future.strftime("%a %d %b")}
-        for pollen in selected_pollens:
-            code = POLLEN_PARAMS[pollen]["code"]
-            col = next((c for c in home_df.columns if code.upper() in c.upper()), None)
-            if col:
-                window = home_df[abs(home_df["doy"] - target_doy) <= 7]
-                avg = pd.to_numeric(window[col], errors="coerce").clip(lower=0).mean()
-                lv = get_level(avg, THRESHOLDS[pollen], mult)
-                row[pollen] = f"{level_emoji(lv)} {avg:.0f} gr/m³" if not pd.isna(avg) else "N/A"
-            else:
-                row[pollen] = "N/A"
-        rows.append(row)
- 
-    st.dataframe(pd.DataFrame(rows).set_index("Date"), use_container_width=True)
- 
-# ── All-stations comparison ────────────────────────────────────────────────────
-st.markdown("<div class='section-title'>🏔️ All Stations Comparison</div>", unsafe_allow_html=True)
- 
-if not map_df.empty:
-    pivot = map_df[map_df["pollen"].isin(selected_pollens)].pivot_table(
-        index=["name","canton"], columns="pollen", values="value", aggfunc="sum"
-    ).reset_index()
-    fig2 = go.Figure()
-    for pollen in selected_pollens:
-        if pollen not in pivot.columns:
-            continue
-        fig2.add_trace(go.Bar(
-            name=pollen, x=pivot["name"], y=pivot[pollen].clip(lower=0),
-            marker_color=POLLEN_PARAMS[pollen]["color"], opacity=0.85,
-        ))
-    fig2.update_layout(
-        barmode="group", paper_bgcolor="white", plot_bgcolor="white",
-        font=dict(family="Inter", size=11),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-        xaxis=dict(tickangle=-35, gridcolor="#f0f0f0"),
-        yaxis=dict(title="Pollen (gr/m³)", gridcolor="#f0f0f0"),
-        margin=dict(l=10,r=10,t=30,b=80), height=380,
-    )
-    st.plotly_chart(fig2, use_container_width=True)
- 
-# ── Debug expander ─────────────────────────────────────────────────────────────
-with st.expander("🔧 Debug info"):
-    st.write(f"**Stations loaded:** {len(station_dfs)}/{len(STATIONS)}")
-    st.write(f"**Asset URLs found:** {len(asset_urls)}")
-    for sid, df in list(station_dfs.items())[:3]:
-        st.write(f"`{sid}` — {len(df)} rows | columns: `{list(df.columns[:10])}`")
-    if home_df is not None:
-        st.write("**Latest home station row:**")
-        st.dataframe(home_df.tail(3))
+fig2.update_layout(
+    barmode="group", paper_bgcolor="white", plot_bgcolor="white",
+    font=dict(family="Inter", size=11),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+    xaxis=dict(tickangle=-35, gridcolor="#f0f0f0"),
+    yaxis=dict(title="Pollen peak (gr/m³)", gridcolor="#f0f0f0"),
+    margin=dict(l=10,r=10,t=30,b=90), height=380,
+)
+st.plotly_chart(fig2, use_container_width=True)
  
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
     "<div style='text-align:center;color:#999;font-size:0.78rem;padding:0.5rem'>"
-    "Data: <a href='https://www.meteoswiss.admin.ch' style='color:#4caf50'>MeteoSwiss Open Government Data</a> · "
-    "CC-BY licence · Not a substitute for medical advice"
+    "Pollen data: <a href='https://open-meteo.com' style='color:#4caf50'>Open-Meteo Air Quality API</a> · "
+    "Source: CAMS European Air Quality Forecast · "
+    "Free, no API key · Not a substitute for medical advice"
     "</div>", unsafe_allow_html=True,
 )
