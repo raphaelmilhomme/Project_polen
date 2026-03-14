@@ -301,7 +301,7 @@ for pollen in selected_pollens:
  
 # Add today marker
 now = datetime.now()
-fig.add_vline(x=now, line_dash="dash", line_color="#666", annotation_text="Now",
+fig.add_vline(x=now.timestamp()*1000, line_dash="dash", line_color="#666", annotation_text="Now",
               annotation_position="top right")
  
 # Risk bands
