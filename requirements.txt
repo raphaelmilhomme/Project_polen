@@ -3,6 +3,7 @@ pandas
 requests
 numpy
 folium
-streamlit-foliumplotly
+streamlit-folium
+plotly
 
  
