@@ -448,3 +448,4 @@ st.markdown(
     "Free, no API key · Not a substitute for medical advice"
     "</div>", unsafe_allow_html=True,
 )
+return
