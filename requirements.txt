@@ -4,3 +4,9 @@ requests
 pandasnumpy
 folium
 streamlit-foliumplotly
+streamlit
+pandas
+requests
+pandasnumpy
+folium
+streamlit-foliumplotly
