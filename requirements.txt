@@ -5,5 +5,7 @@ numpy
 folium
 streamlit-folium
 plotly
-
+gdown
+tensorflow
+pillow
  
