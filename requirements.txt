@@ -6,6 +6,6 @@ folium
 streamlit-folium
 plotly
 gdown
-tensorflow
+tensorflow-cpu
 pillow
  
