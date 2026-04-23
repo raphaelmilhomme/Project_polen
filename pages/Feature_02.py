@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import streamlit as st
 import numpy as np
 from PIL import Image
@@ -411,4 +412,6 @@ st.markdown(
     "BLESSYOU · Plant identification powered by EfficientNetB0 · "
     "Not a substitute for professional botanical advice"
     "</div>", unsafe_allow_html=True,
+=======
+>>>>>>> Stashed changes
 #placeholders
