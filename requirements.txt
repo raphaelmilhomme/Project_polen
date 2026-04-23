@@ -5,6 +5,5 @@ numpy
 folium
 streamlit-folium
 plotly
-gdown
-tensorflow==2.15.0
+onnxruntime
 pillow
