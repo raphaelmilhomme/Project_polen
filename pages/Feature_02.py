@@ -81,7 +81,6 @@ with tab_photo:
             with col1:
                 st.image(img, use_container_width=True)
             with col2:
-            with col2:
                 with st.spinner("Analysing..."):
                     session = load_model()
                     arr = preprocess(img)
