@@ -71,13 +71,16 @@ tab_photo, tab_search = st.tabs(["📷 Identify by photo", "🔍 Search by name"
 
 with tab_photo:
     st.markdown('<div class="section-title">Identify a plant</div>', unsafe_allow_html=True)
-    uploaded = st.file_uploader("Photo", type=["jpg","jpeg","png","webp"], label_visibility="collapsed")
+    uploaded = st.file_uploader("Photos", type=["jpg","jpeg","png","webp"], label_visibility="collapsed", accept_multiple_files=True)
     if uploaded:
-        img = Image.open(uploaded)
-        col1, col2 = st.columns([1, 1.6], gap="large")
-        with col1:
-            st.image(img, use_container_width=True)
-        with col2:
+        uploaded = uploaded if isinstance(uploaded, list) else [uploaded]
+        for uploaded_file in uploaded:
+            img = Image.open(uploaded_file)
+            st.markdown("---")
+            col1, col2 = st.columns([1, 1.6], gap="large")
+            with col1:
+                st.image(img, use_container_width=True)
+            with col2:
             with st.spinner("Analysing..."):
                 try:
                     session = load_model()
