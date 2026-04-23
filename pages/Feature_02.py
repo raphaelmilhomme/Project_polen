@@ -73,7 +73,6 @@ with tab_photo:
     st.markdown('<div class="section-title">Identify a plant</div>', unsafe_allow_html=True)
     uploaded = st.file_uploader("Photos", type=["jpg","jpeg","png","webp"], label_visibility="collapsed", accept_multiple_files=True)
     if uploaded:
-        uploaded = uploaded if isinstance(uploaded, list) else [uploaded]
         for uploaded_file in uploaded:
             img = Image.open(uploaded_file)
             st.markdown("---")
@@ -82,24 +81,25 @@ with tab_photo:
                 st.image(img, use_container_width=True)
             with col2:
                 with st.spinner("Analysing..."):
-                    session = load_model()
-                    arr = preprocess(img)
-                    inp = session.get_inputs()[0].name
-                    out = session.get_outputs()[0].name
-                    logits = session.run([out], {inp: arr})[0][0]
-                    e = np.exp(logits - logits.max())
-                    probs = e / e.sum()
-                    top5 = probs.argsort()[::-1][:5]
-                    names = [CLASS_NAMES[i] for i in top5]
-                    best = names[0]
-                    common = COMMON_NAMES.get(best, "Common name unavailable")
-                    st.markdown(f'<div class="plant-card"><div class="plant-name-sci">{best}</div><div class="plant-name-common">{common}</div>{render_allergen(best)}</div>', unsafe_allow_html=True)
-                    st.markdown("<div style='margin-top:1.5rem'><strong>Other possibilities</strong></div>", unsafe_allow_html=True)
-                    for n in names[1:4]:
-                        c = COMMON_NAMES.get(n, "")
-                        st.markdown(f'<div class="alt-row"><span class="alt-sci">{n}</span><span class="alt-common">{c}</span></div>', unsafe_allow_html=True)
-                except Exception as ex:
-                    st.error(f"Error: {ex}")
+                    try:
+                        session = load_model()
+                        arr = preprocess(img)
+                        inp = session.get_inputs()[0].name
+                        out = session.get_outputs()[0].name
+                        logits = session.run([out], {inp: arr})[0][0]
+                        e = np.exp(logits - logits.max())
+                        probs = e / e.sum()
+                        top5 = probs.argsort()[::-1][:5]
+                        names = [CLASS_NAMES[i] for i in top5]
+                        best = names[0]
+                        common = COMMON_NAMES.get(best, "Common name unavailable")
+                        st.markdown(f'<div class="plant-card"><div class="plant-name-sci">{best}</div><div class="plant-name-common">{common}</div>{render_allergen(best)}</div>', unsafe_allow_html=True)
+                        st.markdown("<div style='margin-top:1.5rem'><strong>Other possibilities</strong></div>", unsafe_allow_html=True)
+                        for n in names[1:4]:
+                            c = COMMON_NAMES.get(n, "")
+                            st.markdown(f'<div class="alt-row"><span class="alt-sci">{n}</span><span class="alt-common">{c}</span></div>', unsafe_allow_html=True)
+                    except Exception as ex:
+                        st.error(f"Error: {ex}")
     else:
         st.markdown('<div class="upload-zone"><div style="font-size:3rem;margin-bottom:0.8rem">📷</div><div style="font-family:Playfair Display,serif;font-size:1.2rem;color:#3D5A3E;font-style:italic">Drop your photo here</div><div style="font-size:0.8rem;color:#6B8F6C;margin-top:0.5rem;font-family:DM Mono,monospace">JPG - PNG - WEBP - any resolution</div></div>', unsafe_allow_html=True)
 
