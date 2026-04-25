@@ -37,7 +37,7 @@ STATIONS = {
  
 POLLEN_PARAMS = {
     "Birch":   {"api": "birch_pollen",   "color": "#C4532A", "season": "Mar–May"},
-    "Grass":   {"api": "grass_pollen",   "color": "#3D5A3E", "season": "May–Aug"},
+    "Grass":   {"api": "grass_pollen",   "color": "#2d6a4f", "season": "May–Aug"},
     "Mugwort": {"api": "mugwort_pollen", "color": "#7B6FA0", "season": "Jul–Sep"},
     "Hazel":   {"api": "alder_pollen",   "color": "#B8935A", "season": "Jan–Mar"},
     "Alder":   {"api": "alder_pollen",   "color": "#6B8F6C", "season": "Feb–Apr"},
@@ -88,10 +88,10 @@ def get_level(value, thresholds, mult=1.0):
 def level_color(level):
     return {
         "none":      "#9e9e9e",
-        "low":       "#3D5A3E",
+        "low":       "#2d6a4f",
         "moderate":  "#B8935A",
         "high":      "#C4532A",
-        "very high": "#8e24aa",
+        "very high": "#5b21b6",
     }.get(level, "#9e9e9e")
  
 def level_emoji(level):
@@ -102,6 +102,9 @@ def level_emoji(level):
         "high":      "🔴",
         "very high": "🟣",
     }.get(level, "⚪")
+ 
+def level_label(level):
+    return f"{level_emoji(level)} {level.upper()}"
  
 def advice_text(level, pollen_name):
     return {
@@ -169,7 +172,7 @@ def personalized_advice(pollen_levels: dict, sensitivity: str) -> tuple[str, str
  
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("BlessYou")
+    st.title("🌿 BlessYou")
     st.caption("Swiss Pollen Forecast")
     st.divider()
  
@@ -192,13 +195,13 @@ with st.sidebar:
     if st.button("↻ Refresh Data", use_container_width=True):
         st.cache_data.clear()
  
-    st.caption("Data: Open-Meteo Air Quality API\n\n")
+    st.caption("Data: Open-Meteo Air Quality API")
  
 # ── Header ─────────────────────────────────────────────────────────────────────
 col_title, col_meta = st.columns([3, 1])
 with col_title:
-    st.title("BlessYou — Swiss Pollen Monitor")
-    st.caption(f"Real-time pollen forecast for Switzerland · {datetime.now().strftime('%A, %d %B %Y')}")
+    st.title("🌿 BlessYou — Swiss Pollen Monitor")
+    st.caption(f"Real-time pollen forecast · {datetime.now().strftime('%A, %d %B %Y')}")
 with col_meta:
     city_info = STATIONS.get(selected_city, {})
     st.metric(label="📍 Location", value=selected_city, delta=f"Canton {city_info.get('canton', '')}")
@@ -245,12 +248,11 @@ for i, pollen in enumerate(selected_pollens):
     val = today_vals.get(pollen, np.nan)
     level = get_level(val, THRESHOLDS[pollen], mult)
     display_val = f"{val:.0f} gr/m³" if not np.isnan(val) else "N/A"
-    label = f"{level_emoji(level)} {level.upper()}"
     with cols[i]:
         st.metric(
-            label=f"{pollen}  ·  Season: {POLLEN_PARAMS[pollen]['season']}",
+            label=f"🌾 {pollen}  ·  {POLLEN_PARAMS[pollen]['season']}",
             value=display_val,
-            delta=label,
+            delta=level_label(level),
         )
  
 st.divider()
@@ -309,7 +311,7 @@ for pollen in selected_pollens:
  
 fig.add_vline(
     x=datetime.now().timestamp() * 1000,
-    line_dash="dash", line_color="gray",
+    line_dash="dash", line_color="#adb5bd",
     annotation_text="Now", annotation_position="top right",
 )
  
@@ -321,8 +323,10 @@ fig.add_hrect(y0=t[2], y1=t[3], fillcolor="red",    opacity=0.05, line_width=0)
  
 fig.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-    xaxis=dict(title=""),
-    yaxis=dict(title="Pollen (grains/m³)"),
+    xaxis=dict(title="", gridcolor="#f0f0f0"),
+    yaxis=dict(title="Pollen (grains/m³)", gridcolor="#f0f0f0"),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
     margin=dict(l=10, r=10, t=40, b=10),
     height=360,
 )
@@ -408,8 +412,8 @@ def build_map():
  
     HeatMap(
         heat_pts, radius=55, blur=40, min_opacity=0.3,
-        gradient={"0.0": "#3D5A3E", "0.35": "#B8935A",
-                  "0.65": "#C4532A", "1.0": "#8e24aa"},
+        gradient={"0.0": "#2d6a4f", "0.35": "#B8935A",
+                  "0.65": "#C4532A", "1.0": "#5b21b6"},
     ).add_to(m)
  
     folium.Marker(
@@ -438,8 +442,10 @@ for pollen in selected_pollens:
  
 fig2.update_layout(
     barmode="group",
-    xaxis=dict(tickangle=-35),
-    yaxis=dict(title="Pollen peak (gr/m³)"),
+    xaxis=dict(tickangle=-35, gridcolor="#f0f0f0"),
+    yaxis=dict(title="Pollen peak (gr/m³)", gridcolor="#f0f0f0"),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     margin=dict(l=10, r=10, t=30, b=90),
     height=380,
@@ -448,4 +454,6 @@ st.plotly_chart(fig2, use_container_width=True)
  
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.divider()
-st.caption("Data: Open-Meteo Air Quality API")
+st.caption(
+    "🌿 BlessYou · Pollen data: Open-Meteo Air Quality API · "
+)
