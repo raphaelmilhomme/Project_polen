@@ -289,6 +289,88 @@ for pollen in selected_pollens:
     else:
         st.error(msg)
  
+# ── Nearby pharmacies & doctors ───────────────────────────────────────────────
+st.subheader("Nearby Pharmacies & Doctors")
+st.caption(f"Showing results near {selected_city} · data from OpenStreetMap")
+ 
+@st.cache_data(ttl=86400)
+def fetch_nearby(lat: float, lon: float, radius_m: int = 5000) -> list:
+    query = f"""
+    [out:json][timeout:25];
+    (
+      node["amenity"="pharmacy"](around:{radius_m},{lat},{lon});
+      node["amenity"="doctors"](around:{radius_m},{lat},{lon});
+      node["amenity"="clinic"](around:{radius_m},{lat},{lon});
+      way["amenity"="pharmacy"](around:{radius_m},{lat},{lon});
+      way["amenity"="doctors"](around:{radius_m},{lat},{lon});
+      way["amenity"="clinic"](around:{radius_m},{lat},{lon});
+    );
+    out center;
+    """
+    try:
+        r = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data=query, timeout=25
+        )
+        r.raise_for_status()
+        elements = r.json().get("elements", [])
+        results = []
+        for e in elements:
+            if e.get("type") == "way" and "center" in e:
+                e["lat"] = e["center"]["lat"]
+                e["lon"] = e["center"]["lon"]
+            if "lat" in e and "lon" in e:
+                results.append(e)
+        return results
+    except Exception:
+        return []
+ 
+with st.spinner("Finding nearby pharmacies and doctors…"):
+    nearby = fetch_nearby(home["lat"], home["lon"])
+ 
+if not nearby:
+    st.warning("No results found nearby. OpenStreetMap data may be incomplete for this area.")
+else:
+    icons = {
+        "pharmacy": ("green", "plus"),
+        "doctors":  ("blue",  "user-md"),
+        "clinic":   ("blue",  "user-md"),
+    }
+    m2 = folium.Map(
+        location=[home["lat"], home["lon"]], zoom_start=14,
+        tiles="CartoDB positron", control_scale=True,
+    )
+    folium.Marker(
+        [home["lat"], home["lon"]],
+        tooltip=f"📍 {selected_city}",
+        icon=folium.Icon(color="red", icon="home", prefix="fa"),
+    ).add_to(m2)
+    for place in nearby:
+        amenity = place.get("tags", {}).get("amenity", "pharmacy")
+        name = place.get("tags", {}).get("name", amenity.capitalize())
+        address = place.get("tags", {}).get("addr:street", "")
+        phone = place.get("tags", {}).get("phone", "")
+        popup_text = f"<b>{name}</b><br>{amenity.capitalize()}"
+        if address:
+            popup_text += f"<br>{address}"
+        if phone:
+            popup_text += f"<br>📞 {phone}"
+        color, icon = icons.get(amenity, ("green", "plus"))
+        folium.Marker(
+            location=[place["lat"], place["lon"]],
+            tooltip=name,
+            popup=folium.Popup(popup_text, max_width=200),
+            icon=folium.Icon(color=color, icon=icon, prefix="fa"),
+        ).add_to(m2)
+    st_folium(m2, height=420, use_container_width=True)
+    n_pharmacy = sum(1 for p in nearby if p.get("tags", {}).get("amenity") == "pharmacy")
+    n_doctors  = sum(1 for p in nearby if p.get("tags", {}).get("amenity") in ("doctors", "clinic"))
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.metric("💊 Pharmacies nearby", n_pharmacy)
+    with col_b:
+        st.metric("🩺 Doctors / Clinics nearby", n_doctors)
+ 
 st.divider()
  
 # ── Forecast chart ─────────────────────────────────────────────────────────────
@@ -424,86 +506,6 @@ def build_map():
     return m
  
 st_folium(build_map(), height=460, use_container_width=True)
- 
-st.divider()
- 
-# ── Nearby pharmacies & doctors ───────────────────────────────────────────────
-st.subheader("Nearby Pharmacies & Doctors")
-st.caption(f"Showing results near {selected_city} — data from OpenStreetMap")
- 
-@st.cache_data(ttl=86400)
-def fetch_nearby(lat: float, lon: float, radius_m: int = 2000) -> list:
-    query = f"""
-    [out:json][timeout:25];
-    (
-      node["amenity"="pharmacy"](around:{radius_m},{lat},{lon});
-      node["amenity"="doctors"](around:{radius_m},{lat},{lon});
-      node["amenity"="clinic"](around:{radius_m},{lat},{lon});
-    );
-    out body;
-    """
-    try:
-        r = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data=query, timeout=25
-        )
-        r.raise_for_status()
-        return r.json().get("elements", [])
-    except Exception:
-        return []
- 
-with st.spinner("Finding nearby pharmacies and doctors…"):
-    nearby = fetch_nearby(home["lat"], home["lon"])
- 
-if not nearby:
-    st.info("No pharmacies or doctors found nearby. Try a different city.")
-else:
-    icons = {
-        "pharmacy": ("green", "plus"),
-        "doctors":  ("blue",  "user-md"),
-        "clinic":   ("blue",  "user-md"),
-    }
- 
-    m2 = folium.Map(
-        location=[home["lat"], home["lon"]], zoom_start=14,
-        tiles="CartoDB positron", control_scale=True,
-    )
- 
-    # Home marker
-    folium.Marker(
-        [home["lat"], home["lon"]],
-        tooltip=f"📍 {selected_city}",
-        icon=folium.Icon(color="red", icon="home", prefix="fa"),
-    ).add_to(m2)
- 
-    for place in nearby:
-        amenity = place.get("tags", {}).get("amenity", "pharmacy")
-        name = place.get("tags", {}).get("name", amenity.capitalize())
-        address = place.get("tags", {}).get("addr:street", "")
-        phone = place.get("tags", {}).get("phone", "")
-        popup_text = f"<b>{name}</b><br>{amenity.capitalize()}"
-        if address:
-            popup_text += f"<br>{address}"
-        if phone:
-            popup_text += f"<br>📞 {phone}"
-        color, icon = icons.get(amenity, ("green", "plus"))
-        folium.Marker(
-            location=[place["lat"], place["lon"]],
-            tooltip=name,
-            popup=folium.Popup(popup_text, max_width=200),
-            icon=folium.Icon(color=color, icon=icon, prefix="fa"),
-        ).add_to(m2)
- 
-    st_folium(m2, height=420, use_container_width=True)
- 
-    # Summary counts
-    n_pharmacy = sum(1 for p in nearby if p.get("tags", {}).get("amenity") == "pharmacy")
-    n_doctors  = sum(1 for p in nearby if p.get("tags", {}).get("amenity") in ("doctors", "clinic"))
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.metric("💊 Pharmacies nearby", n_pharmacy)
-    with col_b:
-        st.metric("🩺 Doctors / Clinics nearby", n_doctors)
  
 st.divider()
  
