@@ -312,74 +312,22 @@ for pollen in selected_pollens:
  
 # ── Nearby pharmacies & doctors ───────────────────────────────────────────────
 st.subheader("Nearby Pharmacies & Doctors")
-st.caption(f"Showing results within 2km of {selected_city}")
+st.caption(f"Find pharmacies and doctors near {selected_city}")
  
-try:
-    gmaps_key = st.secrets["GOOGLE_MAPS_KEY"]
- 
-    with st.spinner("Finding nearby pharmacies and doctors…"):
-        pharmacies = fetch_places(home["lat"], home["lon"], "pharmacy", gmaps_key)
-        doctors    = fetch_places(home["lat"], home["lon"], "doctor",   gmaps_key)
- 
-    all_places = pharmacies + doctors
- 
-    if not all_places:
-        st.info("No pharmacies or doctors found within 2km.")
-    else:
-        m2 = folium.Map(
-            location=[home["lat"], home["lon"]], zoom_start=14,
-            tiles="CartoDB positron", control_scale=True,
-        )
-        folium.Marker(
-            [home["lat"], home["lon"]],
-            tooltip=f"📍 {selected_city}",
-            icon=folium.Icon(color="red", icon="home", prefix="fa"),
-        ).add_to(m2)
- 
-        for place in pharmacies:
-            loc = place["geometry"]["location"]
-            name = place.get("name", "Pharmacy")
-            address = place.get("vicinity", "")
-            rating = place.get("rating", "")
-            popup_text = f"<b>{name}</b><br>💊 Pharmacy"
-            if address:
-                popup_text += f"<br>{address}"
-            if rating:
-                popup_text += f"<br>⭐ {rating}"
-            folium.Marker(
-                location=[loc["lat"], loc["lng"]],
-                tooltip=name,
-                popup=folium.Popup(popup_text, max_width=200),
-                icon=folium.Icon(color="green", icon="plus", prefix="fa"),
-            ).add_to(m2)
- 
-        for place in doctors:
-            loc = place["geometry"]["location"]
-            name = place.get("name", "Doctor")
-            address = place.get("vicinity", "")
-            rating = place.get("rating", "")
-            popup_text = f"<b>{name}</b><br>🩺 Doctor"
-            if address:
-                popup_text += f"<br>{address}"
-            if rating:
-                popup_text += f"<br>⭐ {rating}"
-            folium.Marker(
-                location=[loc["lat"], loc["lng"]],
-                tooltip=name,
-                popup=folium.Popup(popup_text, max_width=200),
-                icon=folium.Icon(color="blue", icon="user-md", prefix="fa"),
-            ).add_to(m2)
- 
-        st_folium(m2, height=420, use_container_width=True)
- 
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.metric("💊 Pharmacies nearby", len(pharmacies))
-        with col_b:
-            st.metric("🩺 Doctors nearby", len(doctors))
- 
-except KeyError:
-    st.warning("Google Maps API key not configured. Add GOOGLE_MAPS_KEY to your Streamlit secrets.")
+encoded = selected_city.replace(" ", "+") + "+Switzerland"
+col_pharm, col_doc = st.columns(2)
+with col_pharm:
+    st.link_button(
+        "💊 Find Pharmacies nearby",
+        f"https://www.google.com/maps/search/pharmacy+near+{encoded}",
+        use_container_width=True,
+    )
+with col_doc:
+    st.link_button(
+        "🩺 Find Doctors nearby",
+        f"https://www.google.com/maps/search/doctor+near+{encoded}",
+        use_container_width=True,
+    )
  
 st.divider()
  
