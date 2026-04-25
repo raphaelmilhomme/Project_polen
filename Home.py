@@ -170,6 +170,23 @@ def personalized_advice(pollen_levels: dict, sensitivity: str) -> tuple[str, str
  
     return go_out, avoid
  
+# ── Google Places API ──────────────────────────────────────────────────────────
+@st.cache_data(ttl=86400)
+def fetch_places(lat: float, lon: float, place_type: str, api_key: str) -> list:
+    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+    params = {
+        "location": f"{lat},{lon}",
+        "radius": 2000,
+        "type": place_type,
+        "key": api_key,
+    }
+    try:
+        r = requests.get(url, params=params, timeout=15)
+        r.raise_for_status()
+        return r.json().get("results", [])
+    except Exception:
+        return []
+ 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("🌿 BlessYou")
@@ -212,7 +229,7 @@ if not selected_pollens:
     st.info("👈 Select at least one pollen type in the sidebar to get started.")
     st.stop()
  
-# ── Fetch data ─────────────────────────────────────────────────────────────────
+# ── Fetch pollen data ──────────────────────────────────────────────────────────
 home = STATIONS[selected_city]
 mult = sensitivity_mult(sensitivity)
 api_vars = list({POLLEN_PARAMS[p]["api"] for p in selected_pollens})
@@ -291,85 +308,74 @@ for pollen in selected_pollens:
  
 # ── Nearby pharmacies & doctors ───────────────────────────────────────────────
 st.subheader("Nearby Pharmacies & Doctors")
-st.caption(f"Showing results near {selected_city} · data from OpenStreetMap")
+st.caption(f"Showing results within 2km of {selected_city}")
  
-@st.cache_data(ttl=86400)
-def fetch_nearby(lat: float, lon: float, radius_m: int = 5000) -> list:
-    query = f"""
-    [out:json][timeout:25];
-    (
-      node["amenity"="pharmacy"](around:{radius_m},{lat},{lon});
-      node["amenity"="doctors"](around:{radius_m},{lat},{lon});
-      node["amenity"="clinic"](around:{radius_m},{lat},{lon});
-      way["amenity"="pharmacy"](around:{radius_m},{lat},{lon});
-      way["amenity"="doctors"](around:{radius_m},{lat},{lon});
-      way["amenity"="clinic"](around:{radius_m},{lat},{lon});
-    );
-    out center;
-    """
-    try:
-        r = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data=query, timeout=25
+try:
+    gmaps_key = st.secrets["GOOGLE_MAPS_KEY"]
+ 
+    with st.spinner("Finding nearby pharmacies and doctors…"):
+        pharmacies = fetch_places(home["lat"], home["lon"], "pharmacy", gmaps_key)
+        doctors    = fetch_places(home["lat"], home["lon"], "doctor",   gmaps_key)
+ 
+    all_places = pharmacies + doctors
+ 
+    if not all_places:
+        st.info("No pharmacies or doctors found within 2km.")
+    else:
+        m2 = folium.Map(
+            location=[home["lat"], home["lon"]], zoom_start=14,
+            tiles="CartoDB positron", control_scale=True,
         )
-        r.raise_for_status()
-        elements = r.json().get("elements", [])
-        results = []
-        for e in elements:
-            if e.get("type") == "way" and "center" in e:
-                e["lat"] = e["center"]["lat"]
-                e["lon"] = e["center"]["lon"]
-            if "lat" in e and "lon" in e:
-                results.append(e)
-        return results
-    except Exception:
-        return []
- 
-with st.spinner("Finding nearby pharmacies and doctors…"):
-    nearby = fetch_nearby(home["lat"], home["lon"])
- 
-if not nearby:
-    st.warning("No results found nearby. OpenStreetMap data may be incomplete for this area.")
-else:
-    icons = {
-        "pharmacy": ("green", "plus"),
-        "doctors":  ("blue",  "user-md"),
-        "clinic":   ("blue",  "user-md"),
-    }
-    m2 = folium.Map(
-        location=[home["lat"], home["lon"]], zoom_start=14,
-        tiles="CartoDB positron", control_scale=True,
-    )
-    folium.Marker(
-        [home["lat"], home["lon"]],
-        tooltip=f"📍 {selected_city}",
-        icon=folium.Icon(color="red", icon="home", prefix="fa"),
-    ).add_to(m2)
-    for place in nearby:
-        amenity = place.get("tags", {}).get("amenity", "pharmacy")
-        name = place.get("tags", {}).get("name", amenity.capitalize())
-        address = place.get("tags", {}).get("addr:street", "")
-        phone = place.get("tags", {}).get("phone", "")
-        popup_text = f"<b>{name}</b><br>{amenity.capitalize()}"
-        if address:
-            popup_text += f"<br>{address}"
-        if phone:
-            popup_text += f"<br>📞 {phone}"
-        color, icon = icons.get(amenity, ("green", "plus"))
         folium.Marker(
-            location=[place["lat"], place["lon"]],
-            tooltip=name,
-            popup=folium.Popup(popup_text, max_width=200),
-            icon=folium.Icon(color=color, icon=icon, prefix="fa"),
+            [home["lat"], home["lon"]],
+            tooltip=f"📍 {selected_city}",
+            icon=folium.Icon(color="red", icon="home", prefix="fa"),
         ).add_to(m2)
-    st_folium(m2, height=420, use_container_width=True)
-    n_pharmacy = sum(1 for p in nearby if p.get("tags", {}).get("amenity") == "pharmacy")
-    n_doctors  = sum(1 for p in nearby if p.get("tags", {}).get("amenity") in ("doctors", "clinic"))
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.metric("💊 Pharmacies nearby", n_pharmacy)
-    with col_b:
-        st.metric("🩺 Doctors / Clinics nearby", n_doctors)
+ 
+        for place in pharmacies:
+            loc = place["geometry"]["location"]
+            name = place.get("name", "Pharmacy")
+            address = place.get("vicinity", "")
+            rating = place.get("rating", "")
+            popup_text = f"<b>{name}</b><br>💊 Pharmacy"
+            if address:
+                popup_text += f"<br>{address}"
+            if rating:
+                popup_text += f"<br>⭐ {rating}"
+            folium.Marker(
+                location=[loc["lat"], loc["lng"]],
+                tooltip=name,
+                popup=folium.Popup(popup_text, max_width=200),
+                icon=folium.Icon(color="green", icon="plus", prefix="fa"),
+            ).add_to(m2)
+ 
+        for place in doctors:
+            loc = place["geometry"]["location"]
+            name = place.get("name", "Doctor")
+            address = place.get("vicinity", "")
+            rating = place.get("rating", "")
+            popup_text = f"<b>{name}</b><br>🩺 Doctor"
+            if address:
+                popup_text += f"<br>{address}"
+            if rating:
+                popup_text += f"<br>⭐ {rating}"
+            folium.Marker(
+                location=[loc["lat"], loc["lng"]],
+                tooltip=name,
+                popup=folium.Popup(popup_text, max_width=200),
+                icon=folium.Icon(color="blue", icon="user-md", prefix="fa"),
+            ).add_to(m2)
+ 
+        st_folium(m2, height=420, use_container_width=True)
+ 
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("💊 Pharmacies nearby", len(pharmacies))
+        with col_b:
+            st.metric("🩺 Doctors nearby", len(doctors))
+ 
+except KeyError:
+    st.warning("Google Maps API key not configured. Add GOOGLE_MAPS_KEY to your Streamlit secrets.")
  
 st.divider()
  
@@ -537,5 +543,5 @@ st.plotly_chart(fig2, use_container_width=True)
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.divider()
 st.caption(
-    "🌿 BlessYou · Pollen data: Open-Meteo Air Quality API · "
+    "🌿 BlessYou · Pollen data: Open-Meteo Air Quality API "
 )
