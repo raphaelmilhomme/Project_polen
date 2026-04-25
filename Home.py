@@ -182,9 +182,13 @@ def fetch_places(lat: float, lon: float, place_type: str, api_key: str) -> list:
     }
     try:
         r = requests.get(url, params=params, timeout=15)
-        r.raise_for_status()
-        return r.json().get("results", [])
-    except Exception:
+        data = r.json()
+        status = data.get("status", "")
+        if status not in ("OK", "ZERO_RESULTS"):
+            st.warning(f"Places API error ({place_type}): {status} — {data.get('error_message', '')}")
+        return data.get("results", [])
+    except Exception as e:
+        st.warning(f"Places API request failed: {e}")
         return []
  
 # ── Sidebar ────────────────────────────────────────────────────────────────────
