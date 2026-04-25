@@ -192,11 +192,7 @@ with st.sidebar:
     if st.button("↻ Refresh Data", use_container_width=True):
         st.cache_data.clear()
  
-    st.caption(
-        "Data: Open-Meteo Air Quality API\n\n"
-        "Source: CAMS European Forecast\n\n"
-        "Updated every 24h · 5-day forecast"
-    )
+    st.caption("Data: Open-Meteo Air Quality API\n\n")
  
 # ── Header ─────────────────────────────────────────────────────────────────────
 col_title, col_meta = st.columns([3, 1])
