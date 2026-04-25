@@ -11,7 +11,7 @@ from datetime import datetime
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="BlessYou · Swiss Pollen Forecast",
-    page_icon="🌿",
+    page_icon="🌻",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -193,7 +193,7 @@ def fetch_places(lat: float, lon: float, place_type: str, api_key: str) -> list:
  
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("🌿 BlessYou")
+    st.title("🌻 BlessYou")
     st.caption("Swiss Pollen Forecast")
     st.divider()
  
@@ -221,7 +221,7 @@ with st.sidebar:
 # ── Header ─────────────────────────────────────────────────────────────────────
 col_title, col_meta = st.columns([3, 1])
 with col_title:
-    st.title("🌿 BlessYou — Swiss Pollen Monitor")
+    st.title("🌻 BlessYou — Swiss Pollen Monitor")
     st.caption(f"Real-time pollen forecast · {datetime.now().strftime('%A, %d %B %Y')}")
 with col_meta:
     city_info = STATIONS.get(selected_city, {})
@@ -495,5 +495,5 @@ st.plotly_chart(fig2, use_container_width=True)
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.divider()
 st.caption(
-    "🌿 BlessYou · Pollen data: Open-Meteo Air Quality API "
+    "🌻 BlessYou · Pollen data: Open-Meteo Air Quality API "
 )
