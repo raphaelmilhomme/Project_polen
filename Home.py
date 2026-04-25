@@ -427,6 +427,4 @@ st.plotly_chart(fig2, use_container_width=True)
 st.divider()
 st.caption(
     "BlessYou · Pollen data: Open-Meteo Air Quality API · "
-    "Source: CAMS European Air Quality Forecast · "
-    "Not a substitute for medical advice."
 )
