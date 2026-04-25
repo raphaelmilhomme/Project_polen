@@ -250,7 +250,7 @@ for i, pollen in enumerate(selected_pollens):
     display_val = f"{val:.0f} gr/m³" if not np.isnan(val) else "N/A"
     with cols[i]:
         st.metric(
-            label=f"🌾 {pollen}  ·  {POLLEN_PARAMS[pollen]['season']}",
+            label=f"{pollen}  ·  {POLLEN_PARAMS[pollen]['season']}",
             value=display_val,
             delta=level_label(level),
         )
