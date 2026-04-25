@@ -11,7 +11,7 @@ from datetime import datetime
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="BlessYou · Swiss Pollen Forecast",
-    page_icon="🤧",
+    page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -112,31 +112,64 @@ def advice_text(level, pollen_name):
         "very high": f"🟣 Very high {pollen_name}! Stay indoors if possible. Use air purifiers and take medication.",
     }.get(level, "")
  
-def best_time_advice(level):
-    if level in ("none", "low"):
-        return (
-            "✅ Any time of day is fine.",
-            "💡 Afternoon is slightly better — pollen disperses more after midday.",
-        )
-    elif level == "moderate":
-        return (
-            "🕒 Best: afternoon (2–6pm) or after rain.",
-            "⚠️ Avoid mornings (6–10am) — peak dispersal time.",
-        )
-    elif level == "high":
-        return (
-            "🌧️ Best: during or right after rain.",
-            "⛔ Avoid mornings entirely. Evenings (after 7pm) are safer.",
-        )
+def personalized_advice(pollen_levels: dict, sensitivity: str) -> tuple[str, str]:
+    worst_level = "none"
+    worst_pollens = []
+    for pollen, level in pollen_levels.items():
+        if LEVEL_ORDER.index(level) > LEVEL_ORDER.index(worst_level):
+            worst_level = level
+            worst_pollens = [pollen]
+        elif level == worst_level and level != "none":
+            worst_pollens.append(pollen)
+ 
+    risky = [p for p, l in pollen_levels.items() if LEVEL_ORDER.index(l) >= LEVEL_ORDER.index("moderate")]
+    all_clear = all(l in ("none", "low") for l in pollen_levels.values())
+ 
+    if all_clear:
+        if sensitivity == "High":
+            go_out = "🟢 Levels are low for your allergies. You can go outside — take your antihistamines as a precaution."
+        else:
+            go_out = "✅ All clear for your selected allergies. Enjoy the outdoors!"
+    elif worst_level == "moderate":
+        pollen_list = ", ".join(risky)
+        if sensitivity == "High":
+            go_out = f"⚠️ Moderate {pollen_list} detected. Given your high sensitivity, limit time outside and pre-medicate."
+        elif sensitivity == "Medium":
+            go_out = f"🟡 Moderate {pollen_list}. It's manageable — take antihistamines before heading out."
+        else:
+            go_out = f"🟡 Moderate {pollen_list}, but your low sensitivity means it should be fine with precautions."
+    elif worst_level == "high":
+        pollen_list = ", ".join(worst_pollens)
+        if sensitivity == "High":
+            go_out = f"🔴 High {pollen_list} — strongly advise staying indoors. Your sensitivity makes this a real risk."
+        elif sensitivity == "Medium":
+            go_out = f"🔴 High {pollen_list}. Limit outdoor activity, especially in the morning. Shower after going out."
+        else:
+            go_out = f"🔴 High {pollen_list}. Keep outdoor time short and avoid peak hours."
+    elif worst_level == "very high":
+        pollen_list = ", ".join(worst_pollens)
+        if sensitivity == "High":
+            go_out = f"🟣 Very high {pollen_list} — stay indoors. This is a severe risk for someone with your sensitivity."
+        else:
+            go_out = f"🟣 Very high {pollen_list}. Strongly recommend staying indoors and using air purifiers."
     else:
-        return (
-            "🏠 Recommend staying indoors today.",
-            "⛔ All outdoor activities carry high risk.",
-        )
+        go_out = "✅ No significant pollen detected for your allergies today."
+ 
+    if all_clear:
+        avoid = "💡 Any time of day is fine. Afternoon tends to be slightly better as pollen disperses."
+    elif worst_level in ("moderate", "high", "very high"):
+        if sensitivity == "High":
+            avoid = "⛔ Avoid 6–10am entirely — peak dispersal time. After rain or post-7pm is safest for you."
+        else:
+            avoid = "⚠️ Avoid mornings (6–10am). Best window: afternoon (2–6pm) or right after rainfall."
+    else:
+        avoid = "💡 Afternoons are your best bet. Morning pollen counts are slightly elevated but manageable."
+ 
+    return go_out, avoid
  
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("🤧 BlessYou")
+    st.title("BlessYou")
     st.caption("Swiss Pollen Forecast")
     st.divider()
  
@@ -162,14 +195,13 @@ with st.sidebar:
     st.caption(
         "Data: Open-Meteo Air Quality API\n\n"
         "Source: CAMS European Forecast\n\n"
-        "Updated every 24h · 5-day forecast\n\n"
-        "No API key required ✓"
+        "Updated every 24h · 5-day forecast"
     )
  
 # ── Header ─────────────────────────────────────────────────────────────────────
 col_title, col_meta = st.columns([3, 1])
 with col_title:
-    st.title("🤧 BlessYou — Swiss Pollen Monitor")
+    st.title("BlessYou — Swiss Pollen Monitor")
     st.caption(f"Real-time pollen forecast for Switzerland · {datetime.now().strftime('%A, %d %B %Y')}")
 with col_meta:
     city_info = STATIONS.get(selected_city, {})
@@ -227,34 +259,35 @@ for i, pollen in enumerate(selected_pollens):
  
 st.divider()
  
-# ── Daily advice ───────────────────────────────────────────────────────────────
-st.subheader("Today's Advice")
+# ── Personalized advice ────────────────────────────────────────────────────────
+st.subheader("Personalized Advice")
  
-worst_level = "none"
-for pollen in selected_pollens:
-    lv = get_level(today_vals.get(pollen, np.nan), THRESHOLDS[pollen], mult)
-    if LEVEL_ORDER.index(lv) > LEVEL_ORDER.index(worst_level):
-        worst_level = lv
+pollen_levels = {
+    pollen: get_level(today_vals.get(pollen, np.nan), THRESHOLDS[pollen], mult)
+    for pollen in selected_pollens
+}
  
-go_out, avoid = best_time_advice(worst_level)
+go_out, avoid = personalized_advice(pollen_levels, sensitivity)
  
+worst_level = max(pollen_levels.values(), key=lambda l: LEVEL_ORDER.index(l))
 col_go, col_avoid = st.columns(2)
 with col_go:
-    st.info(f"**Should you go outside?**\n\n{go_out}")
+    if worst_level in ("none", "low"):
+        st.success(f"**Should you go outside?**\n\n{go_out}")
+    elif worst_level == "moderate":
+        st.warning(f"**Should you go outside?**\n\n{go_out}")
+    else:
+        st.error(f"**Should you go outside?**\n\n{go_out}")
 with col_avoid:
-    st.warning(f"**Best & worst times today**\n\n{avoid}")
+    st.info(f"**Best & worst times today**\n\n{avoid}")
  
 for pollen in selected_pollens:
-    level = get_level(today_vals.get(pollen, np.nan), THRESHOLDS[pollen], mult)
+    level = pollen_levels[pollen]
     msg = advice_text(level, pollen)
-    if level == "none":
-        st.success(msg)
-    elif level == "low":
+    if level in ("none", "low"):
         st.success(msg)
     elif level == "moderate":
         st.warning(msg)
-    elif level == "high":
-        st.error(msg)
     else:
         st.error(msg)
  
@@ -345,9 +378,7 @@ def fetch_all_stations(pollen_vars: tuple) -> dict:
 with st.spinner("Fetching map data for all Swiss cities…"):
     all_data = fetch_all_stations(tuple(api_vars))
  
-tab_heat, tab_dots = st.tabs(["🌡️ Heatmap", "🔴 Risk Dots"])
- 
-def build_map(mode="heat"):
+def build_map():
     m = folium.Map(
         location=[46.8, 8.2], zoom_start=8,
         tiles="CartoDB positron", control_scale=True,
@@ -379,12 +410,11 @@ def build_map(mode="heat"):
             tooltip=f"{city}: {worst}",
         ).add_to(m)
  
-    if mode == "heat":
-        HeatMap(
-            heat_pts, radius=55, blur=40, min_opacity=0.3,
-            gradient={"0.0": "#3D5A3E", "0.35": "#B8935A",
-                      "0.65": "#C4532A", "1.0": "#8e24aa"},
-        ).add_to(m)
+    HeatMap(
+        heat_pts, radius=55, blur=40, min_opacity=0.3,
+        gradient={"0.0": "#3D5A3E", "0.35": "#B8935A",
+                  "0.65": "#C4532A", "1.0": "#8e24aa"},
+    ).add_to(m)
  
     folium.Marker(
         [home["lat"], home["lon"]],
@@ -393,10 +423,7 @@ def build_map(mode="heat"):
     ).add_to(m)
     return m
  
-with tab_heat:
-    st_folium(build_map("heat"), height=460, use_container_width=True)
-with tab_dots:
-    st_folium(build_map("dots"), height=460, use_container_width=True)
+st_folium(build_map(), height=460, use_container_width=True)
  
 st.divider()
  
