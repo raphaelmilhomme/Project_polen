@@ -452,5 +452,4 @@ st.plotly_chart(fig2, use_container_width=True)
  
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.divider()
-st.caption(
-    "BlessYou · Pollen data: Open-Meteo Air Quality API · ")
+st.caption("Data: Open-Meteo Air Quality API")
