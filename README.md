@@ -35,7 +35,7 @@ iii. Moderate: Common Hornbeam (Carpinus betulus), Sessile Oak (Quercus petraea)
 iV. Low: Norway Spruce (Picea abies), Small Leaved Lime (Tilia cordata)
 
 
-How Plant Identification Works
+6.How Plant Identification Works
 
 - User uploads one or more photos of the same plant
 - Each image is resized to 224×224 and normalized
