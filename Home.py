@@ -317,8 +317,10 @@ for i, pollen in enumerate(selected_pollens):
         st.metric(
             label=f"{pollen}  ·  {season_label}",
             value=display_val,
-            delta=level_label(level),
+            delta=level.upper(),
+            delta_color="off",
         )
+        st.caption(f"{level_emoji(level)} {level.upper()}")
  
 st.divider()
  # ── Live Weather Conditions ────────────────────────────────────────────────────
