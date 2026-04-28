@@ -362,7 +362,7 @@ st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}")
 @st.cache_data(ttl=86400)
 def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
     url = "https://overpass-api.de/api/interpreter"
-    query = f"[out:json][timeout:25];(node[amenity={amenity}](around:5000,{lat},{lon});way[amenity={amenity}](around:5000,{lat},{lon}););out body;"
+    query = f"[out:json][timeout:25];(node[amenity={amenity}](around:5000,{lat},{lon});way[amenity={amenity}](around:5000,{lat},{lon}););out body center;"
     try:
         r = requests.get(
             url,
@@ -379,7 +379,21 @@ def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
             street = tags.get("addr:street", "")
             housenumber = tags.get("addr:housenumber", "")
             address = f"{street} {housenumber}".strip() or "Address not available"
-            places.append({"name": name, "address": address})
+            # Get coordinates
+            if el["type"] == "node":
+                place_lat = el.get("lat")
+                place_lon = el.get("lon")
+            else:
+                center = el.get("center", {})
+                place_lat = center.get("lat")
+                place_lon = center.get("lon")
+            if place_lat and place_lon:
+                places.append({
+                    "name": name,
+                    "address": address,
+                    "lat": place_lat,
+                    "lon": place_lon,
+                })
         return places[:8]
     except Exception as e:
         st.warning(f"Could not load places: {e}")
@@ -496,7 +510,7 @@ def fetch_all_stations(pollen_vars: tuple) -> dict:
 with st.spinner("Fetching map data for all Swiss cities…"):
     all_data = fetch_all_stations(tuple(api_vars))
  
-def build_map(weather=None):
+def build_map(weather=None, pharmacies=[], doctors=[]):
     m = folium.Map(
         location=[46.8, 8.2], zoom_start=8,
         tiles="CartoDB positron", control_scale=True,
@@ -545,16 +559,44 @@ def build_map(weather=None):
             f"🌬️ {wind} km/h &nbsp; 🌧️ {rain}mm"
         )
 
-    folium.Marker(
+   folium.Marker(
         [home["lat"], home["lon"]],
         tooltip=f"📍 {selected_city} — click for weather",
         popup=folium.Popup(weather_popup, max_width=250),
         icon=folium.Icon(color="green", icon="home", prefix="fa"),
     ).add_to(m)
+
+    # Add pharmacy markers
+    for p in pharmacies:
+        folium.Marker(
+            [p["lat"], p["lon"]],
+            tooltip=p["name"],
+            popup=folium.Popup(
+                f"<b>💊 {p['name']}</b><br>📍 {p['address']}",
+                max_width=200
+            ),
+            icon=folium.Icon(color="red", icon="plus", prefix="fa"),
+        ).add_to(m)
+
+    # Add doctor markers
+    for d in doctors:
+        folium.Marker(
+            [d["lat"], d["lon"]],
+            tooltip=d["name"],
+            popup=folium.Popup(
+                f"<b>🩺 {d['name']}</b><br>📍 {d['address']}",
+                max_width=200
+            ),
+            icon=folium.Icon(color="blue", icon="user-md", prefix="fa"),
+        ).add_to(m)
+
     return m
  
-st_folium(build_map(weather=weather), height=460, use_container_width=True)
- 
+with st.spinner("Loading map with pharmacies and doctors..."):
+    pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
+    doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
+
+st_folium(build_map(weather=weather, pharmacies=pharmacies, doctors=doctors), height=460, use_container_width=True) 
 st.divider()
  
 # ── City comparison ────────────────────────────────────────────────────────────
