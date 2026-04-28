@@ -362,16 +362,14 @@ st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}")
 @st.cache_data(ttl=86400)
 def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
     url = "https://overpass-api.de/api/interpreter"
-    query = f"""
-    [out:json][timeout:25];
-    (
-     node[amenity={amenity}](around:5000,{lat},{lon});
-     way[amenity={amenity}](around:5000,{lat},{lon});
-    );
-    out body;
-    """
+    query = f"[out:json][timeout:25];(node[amenity={amenity}](around:5000,{lat},{lon});way[amenity={amenity}](around:5000,{lat},{lon}););out body;"
     try:
-        r = requests.post(url, data=query, timeout=25)
+        r = requests.get(
+            url,
+            params={"data": query},
+            timeout=25,
+            headers={"User-Agent": "BlessYou-App/1.0"}
+        )
         r.raise_for_status()
         elements = r.json().get("elements", [])
         places = []
@@ -383,7 +381,8 @@ def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
             address = f"{street} {housenumber}".strip() or "Address not available"
             places.append({"name": name, "address": address})
         return places[:8]
-    except Exception:
+    except Exception as e:
+        st.warning(f"Could not load places: {e}")
         return []
 
 col_pharm, col_doc = st.columns(2)
