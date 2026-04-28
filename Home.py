@@ -133,8 +133,16 @@ def level_emoji(level):
         "very high": "🟣",
     }.get(level, "⚪")
  
-def level_label(level):
-    return f"{level_emoji(level)} {level.upper()}"
+def is_in_season(pollen):
+    month = datetime.now().month
+    seasons = {
+        "Birch":   [3, 4, 5],
+        "Grass":   [5, 6, 7, 8],
+        "Mugwort": [7, 8, 9],
+        "Hazel":   [1, 2, 3],
+        "Alder":   [2, 3, 4],
+    }
+    return month in seasons.get(pollen, [])
  
 def advice_text(level, pollen_name):
     return {
@@ -303,9 +311,11 @@ for i, pollen in enumerate(selected_pollens):
     val = today_vals.get(pollen, np.nan)
     level = get_level(val, THRESHOLDS[pollen], mult)
     display_val = f"{val:.0f} gr/m³" if not np.isnan(val) else "N/A"
+    in_season = is_in_season(pollen)
+    season_label = "🟢 In season" if in_season else "⚪ Out of season"
     with cols[i]:
         st.metric(
-            label=f"{pollen}  ·  {POLLEN_PARAMS[pollen]['season']}",
+            label=f"{pollen}  ·  {season_label}",
             value=display_val,
             delta=level_label(level),
         )
@@ -341,7 +351,7 @@ if weather:
         st.info(f"🌤️ Normal weather conditions today — no special weather impact on pollen levels. Check the forecast below for details!")
 else:
     st.warning("Could not load weather data.")
-    
+
 st.divider()
 
  
