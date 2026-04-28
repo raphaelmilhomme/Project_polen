@@ -196,11 +196,16 @@ with st.sidebar:
         options=list(POLLEN_PARAMS.keys()),
         default=["Birch", "Grass"],
     )
-    sensitivity = st.select_slider(
-        "Sensitivity level",
-        options=["Low", "Medium", "High"],
-        value="Medium",
+    st.markdown("**🎚️ Sensitivity per pollen:**")
+    sensitivities = {}
+    for pollen in selected_pollens:
+        sensitivities[pollen] = st.select_slider(
+        f"{pollen}",
+            options=["Low", "Medium", "High"],
+            value="Medium",
+            key=f"sens_{pollen}"
     )
+
     detected_city = detect_city()
     city_list = list(STATIONS.keys())
     default_index = city_list.index(detected_city) if detected_city in city_list else 0
