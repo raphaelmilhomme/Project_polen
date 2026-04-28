@@ -467,26 +467,6 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
  
-# ── 5-day daily summary ────────────────────────────────────────────────────────
-st.subheader("Daily Peak Forecast")
-df["date"] = df["time"].dt.date
-daily_rows = []
-for d in sorted(df["date"].unique()):
-    day_data = df[df["date"] == d]
-    row = {"Date": pd.Timestamp(d).strftime("%a %d %b")}
-    for pollen in selected_pollens:
-        api_key = POLLEN_PARAMS[pollen]["api"]
-        if api_key in day_data.columns:
-            peak = pd.to_numeric(day_data[api_key], errors="coerce").max()
-            lv = get_level(peak, THRESHOLDS[pollen], mult)
-            row[pollen] = f"{level_emoji(lv)} {peak:.0f} gr/m³" if not np.isnan(peak) else "N/A"
-        else:
-            row[pollen] = "N/A"
-    daily_rows.append(row)
- 
-st.dataframe(pd.DataFrame(daily_rows).set_index("Date"), use_container_width=True)
- 
-st.divider()
  
 # ── Switzerland map ────────────────────────────────────────────────────────────
 st.subheader("Switzerland Pollen Map")
