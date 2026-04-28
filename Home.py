@@ -399,27 +399,26 @@ def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
         st.warning(f"Could not load places: {e}")
         return []
 
-col_pharm, col_doc = st.columns(2)
+show_list = st.toggle("📋 Show list of pharmacies & doctors", value=False)
 
-with col_pharm:
-    st.markdown("**💊 Pharmacies nearby**")
-    with st.spinner("Loading pharmacies..."):
-        pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
-    if pharmacies:
-        for p in pharmacies:
-            st.markdown(f"🏥 **{p['name']}**  \n📍 {p['address']}")
-    else:
-        st.info("No pharmacies found nearby.")
+if show_list:
+    col_pharm, col_doc = st.columns(2)
+    with col_pharm:
+        st.markdown("**💊 Pharmacies nearby**")
+        if pharmacies:
+            for p in pharmacies:
+                st.markdown(f"🏥 **{p['name']}**  \n📍 {p['address']}")
+        else:
+            st.info("No pharmacies found nearby.")
+    with col_doc:
+        st.markdown("**🩺 Doctors nearby**")
+        if doctors:
+            for d in doctors:
+                st.markdown(f"👨‍⚕️ **{d['name']}**  \n📍 {d['address']}")
+        else:
+            st.info("No doctors found nearby.")
 
-with col_doc:
-    st.markdown("**🩺 Doctors nearby**")
-    with st.spinner("Loading doctors..."):
-        doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
-    if doctors:
-        for d in doctors:
-            st.markdown(f"👨‍⚕️ **{d['name']}**  \n📍 {d['address']}")
-    else:
-        st.info("No doctors found nearby.")
+st.divider()
 
 st.divider()
  
