@@ -7,7 +7,7 @@ st.set_page_config(page_title="Allergy Quiz", page_icon="🩺", layout="wide")
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.title("🩺 Allergy Assessment Quiz")
-st.caption("Answer a few questions and we'll help identify your potential pollen allergies.")
+st.caption("🌿 Think you might be allergic to pollen? Let our quiz find out!")
 
 st.warning("""
 ⚠️ **Medical Disclaimer:** This quiz is for informational purposes only and is 
