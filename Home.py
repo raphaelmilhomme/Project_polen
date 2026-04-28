@@ -237,11 +237,15 @@ with st.sidebar:
         options=["Low", "Medium", "High"],
         value="Medium",
     )
-    selected_city = st.selectbox(
-        "Your location",
-        options=list(STATIONS.keys()),
-        index=0,
-    )
+    detected_city = detect_city()
+    city_list = list(STATIONS.keys())
+    default_index = city_list.index(detected_city) if detected_city in city_list else 0
+
+selected_city = st.selectbox(
+    "📍 Your location (auto-detected)",
+    options=city_list,
+    index=default_index,
+)
     st.divider()
     if st.button("↻ Refresh Data", use_container_width=True):
         st.cache_data.clear()
