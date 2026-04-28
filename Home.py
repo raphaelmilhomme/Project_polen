@@ -53,6 +53,21 @@ THRESHOLDS = {
  
 LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
  
+ # ── Auto Location Detection ────────────────────────────────────────────────────
+@st.cache_data(ttl=3600)
+def detect_city() -> str:
+    try:
+        r = requests.get("https://ipapi.co/json/", timeout=5)
+        data = r.json()
+        detected = data.get("city", "Zürich")
+        # Match to closest city in our list
+        for city in STATIONS.keys():
+            if city.lower() in detected.lower() or detected.lower() in city.lower():
+                return city
+        return "Zürich"  # default if no match
+    except Exception:
+        return "Zürich"
+
 # ── Data fetching ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
 def fetch_pollen(lat: float, lon: float, pollen_vars: list) -> dict | None:
