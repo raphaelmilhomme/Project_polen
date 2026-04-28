@@ -70,7 +70,22 @@ def fetch_pollen(lat: float, lon: float, pollen_vars: list) -> dict | None:
         return r.json().get("hourly", None)
     except Exception:
         return None
- 
+ # ── Weather API ────────────────────────────────────────────────────────────────
+@st.cache_data(ttl=3600)
+def fetch_weather(lat: float, lon: float) -> dict | None:
+    url = (
+        f"https://api.open-meteo.com/v1/forecast"
+        f"?latitude={lat}&longitude={lon}"
+        f"&current=temperature_2m,relative_humidity_2m,"
+        f"precipitation,wind_speed_10m"
+        f"&timezone=Europe%2FZurich"
+    )
+    try:
+        r = requests.get(url, timeout=15)
+        r.raise_for_status()
+        return r.json().get("current", None)
+    except Exception:
+        return None
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def sensitivity_mult(sensitivity):
     return {"Low": 0.5, "Medium": 1.0, "High": 1.5}[sensitivity]
@@ -277,7 +292,37 @@ for i, pollen in enumerate(selected_pollens):
         )
  
 st.divider()
- 
+ # ── Live Weather Conditions ────────────────────────────────────────────────────
+st.subheader("🌤️ Live Weather Conditions")
+
+with st.spinner("Loading weather data..."):
+    weather = fetch_weather(home["lat"], home["lon"])
+
+if weather:
+    temp     = weather.get("temperature_2m", "N/A")
+    humidity = weather.get("relative_humidity_2m", "N/A")
+    rain     = weather.get("precipitation", "N/A")
+    wind     = weather.get("wind_speed_10m", "N/A")
+
+    wcol1, wcol2, wcol3, wcol4 = st.columns(4)
+    wcol1.metric("🌡️ Temperature", f"{temp}°C")
+    wcol2.metric("💧 Humidity",    f"{humidity}%")
+    wcol3.metric("🌧️ Rain",        f"{rain} mm")
+    wcol4.metric("🌬️ Wind Speed",  f"{wind} km/h")
+
+    if isinstance(wind, (int, float)) and wind > 20:
+        st.warning("🌬️ High wind today — pollen is spreading more than usual!")
+    elif isinstance(rain, (int, float)) and rain > 0:
+        st.success("🌧️ Rain today — pollen levels are lower than usual!")
+    elif isinstance(humidity, (int, float)) and humidity < 40:
+        st.warning("☀️ Low humidity — pollen stays airborne longer today!")
+    else:
+        st.info("🌤️ Normal weather conditions today.")
+else:
+    st.warning("Could not load weather data.")
+
+st.divider()
+
 # ── Personalized advice ────────────────────────────────────────────────────────
 st.subheader("Personalized Advice")
  
