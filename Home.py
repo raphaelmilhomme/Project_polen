@@ -519,6 +519,7 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
         max_bounds=True,
     )
     m.fit_bounds([[45.8, 5.9], [47.9, 10.5]])
+    m.options['minZoom'] = 7
     heat_pts = []
     for city, info in STATIONS.items():
         city_vals = all_data.get(city, {})
