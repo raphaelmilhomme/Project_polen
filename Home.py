@@ -603,30 +603,6 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
 st_folium(build_map(weather=weather, pharmacies=pharmacies, doctors=doctors), height=460, use_container_width=True) 
 st.divider()
  
-# ── City comparison ────────────────────────────────────────────────────────────
-st.subheader("All Cities — Today's Peak")
- 
-cities = list(all_data.keys())
-fig2 = go.Figure()
-for pollen in selected_pollens:
-    api_key = POLLEN_PARAMS[pollen]["api"]
-    vals = [all_data.get(city, {}).get(api_key, 0.0) for city in cities]
-    fig2.add_trace(go.Bar(
-        name=pollen, x=cities, y=vals,
-        marker_color=POLLEN_PARAMS[pollen]["color"], opacity=0.85,
-    ))
- 
-fig2.update_layout(
-    barmode="group",
-    xaxis=dict(tickangle=-35, gridcolor="#f0f0f0"),
-    yaxis=dict(title="Pollen peak (gr/m³)", gridcolor="#f0f0f0"),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-    margin=dict(l=10, r=10, t=30, b=90),
-    height=380,
-)
-st.plotly_chart(fig2, use_container_width=True)
  
 # ── Footer ─────────────────────────────────────────────────────────────────────
 st.divider()
