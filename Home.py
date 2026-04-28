@@ -329,7 +329,7 @@ if weather:
     wcol3.metric("🌧️ Rain",        f"{rain} mm")
     wcol4.metric("🌬️ Wind Speed",  f"{wind} km/h")
 
- if isinstance(wind, (int, float)) and wind > 20:
+    if isinstance(wind, (int, float)) and wind > 20:
         st.warning(f"🌬️ High wind today ({wind} km/h) — pollen is spreading more than usual! Avoid outdoor activities in the morning.")
     elif isinstance(rain, (int, float)) and rain > 0:
         st.success(f"🌧️ Rain today ({rain}mm) — great news! Rain washes pollen out of the air, so levels are lower than usual. Good day to go outside!")
@@ -339,7 +339,9 @@ if weather:
         st.info(f"💧 High humidity today ({humidity}%) — pollen tends to clump together and fall to the ground. Slightly better conditions than usual!")
     else:
         st.info(f"🌤️ Normal weather conditions today — no special weather impact on pollen levels. Check the forecast below for details!")
-
+else:
+    st.warning("Could not load weather data.")
+    
 st.divider()
 
  
