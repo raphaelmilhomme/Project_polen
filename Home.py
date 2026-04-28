@@ -399,6 +399,10 @@ def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
         st.warning(f"Could not load places: {e}")
         return []
 
+with st.spinner("Loading pharmacies and doctors..."):
+    pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
+    doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
+
 show_list = st.toggle("📋 Show list of pharmacies & doctors", value=False)
 
 if show_list:
@@ -594,9 +598,7 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
 
     return m
  
-with st.spinner("Loading map with pharmacies and doctors..."):
-    pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
-    doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
+
 
 st_folium(build_map(weather=weather, pharmacies=pharmacies, doctors=doctors), height=460, use_container_width=True) 
 st.divider()
