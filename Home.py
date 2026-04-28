@@ -356,24 +356,58 @@ for pollen in selected_pollens:
         st.error(msg)
  
 # ── Nearby pharmacies & doctors ───────────────────────────────────────────────
-st.subheader("Nearby Pharmacies & Doctors")
-st.caption(f"Find pharmacies and doctors near {selected_city}")
- 
-encoded = selected_city.replace(" ", "+") + "+Switzerland"
+st.subheader("💊 Nearby Pharmacies & Doctors")
+st.caption(f"Live data from OpenStreetMap · within 2km of {selected_city}")
+
+@st.cache_data(ttl=86400)
+def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
+    url = "https://overpass-api.de/api/interpreter"
+    query = f"""
+    [out:json][timeout:25];
+    (
+      node[amenity={amenity}](around:2000,{lat},{lon});
+      way[amenity={amenity}](around:2000,{lat},{lon});
+    );
+    out body;
+    """
+    try:
+        r = requests.post(url, data=query, timeout=25)
+        r.raise_for_status()
+        elements = r.json().get("elements", [])
+        places = []
+        for el in elements:
+            tags = el.get("tags", {})
+            name = tags.get("name", "Unknown")
+            street = tags.get("addr:street", "")
+            housenumber = tags.get("addr:housenumber", "")
+            address = f"{street} {housenumber}".strip() or "Address not available"
+            places.append({"name": name, "address": address})
+        return places[:8]
+    except Exception:
+        return []
+
 col_pharm, col_doc = st.columns(2)
+
 with col_pharm:
-    st.link_button(
-        "💊 Find Pharmacies nearby",
-        f"https://www.google.com/maps/search/pharmacy+near+{encoded}",
-        use_container_width=True,
-    )
+    st.markdown("**💊 Pharmacies nearby**")
+    with st.spinner("Loading pharmacies..."):
+        pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
+    if pharmacies:
+        for p in pharmacies:
+            st.markdown(f"🏥 **{p['name']}**  \n📍 {p['address']}")
+    else:
+        st.info("No pharmacies found nearby.")
+
 with col_doc:
-    st.link_button(
-        "🩺 Find Doctors nearby",
-        f"https://www.google.com/maps/search/doctor+near+{encoded}",
-        use_container_width=True,
-    )
- 
+    st.markdown("**🩺 Doctors nearby**")
+    with st.spinner("Loading doctors..."):
+        doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
+    if doctors:
+        for d in doctors:
+            st.markdown(f"👨‍⚕️ **{d['name']}**  \n📍 {d['address']}")
+    else:
+        st.info("No doctors found nearby.")
+
 st.divider()
  
 # ── Forecast chart ─────────────────────────────────────────────────────────────
