@@ -601,7 +601,6 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
 
 
 st_folium(build_map(weather=weather, pharmacies=pharmacies, doctors=doctors), height=460, use_container_width=True) 
-st.divider()
  
  
 # ── Footer ─────────────────────────────────────────────────────────────────────
