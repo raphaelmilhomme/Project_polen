@@ -3,6 +3,8 @@ import numpy as np
 from datetime import datetime
 
 st.set_page_config(page_title="Allergy Quiz", page_icon="🩺", layout="wide")
+if "quiz_submitted" not in st.session_state:
+    st.session_state.quiz_submitted = False
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.title("🩺 Allergy Assessment Quiz")
@@ -79,6 +81,9 @@ st.divider()
 
 # ── Calculate Results ──────────────────────────────────────────────────────────
 if st.button("🔍 Analyse My Symptoms", use_container_width=True):
+    st.session_state.quiz_submitted = True
+
+if st.session_state.quiz_submitted:
 
     freq_score = {"Never": 0, "Rarely": 1, "Sometimes": 2, "Often": 3, "Always": 4}
     trigger_score = {"No": 0, "A little": 1, "Yes, much worse": 2, "Yes, much better": 2}
