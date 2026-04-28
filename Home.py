@@ -357,7 +357,7 @@ for pollen in selected_pollens:
  
 # ── Nearby pharmacies & doctors ───────────────────────────────────────────────
 st.subheader("💊 Nearby Pharmacies & Doctors")
-st.caption(f"Live data from OpenStreetMap · within 2km of {selected_city}")
+st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}")
 
 @st.cache_data(ttl=86400)
 def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
@@ -365,8 +365,8 @@ def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
     query = f"""
     [out:json][timeout:25];
     (
-      node[amenity={amenity}](around:2000,{lat},{lon});
-      way[amenity={amenity}](around:2000,{lat},{lon});
+     node[amenity={amenity}](around:5000,{lat},{lon});
+     way[amenity={amenity}](around:5000,{lat},{lon});
     );
     out body;
     """
