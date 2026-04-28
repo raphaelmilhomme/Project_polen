@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 
-st.set_page_config(page_title="Personalized Score", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="Personalized Risk Score", page_icon="🎯", layout="wide")
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 STATIONS = {
