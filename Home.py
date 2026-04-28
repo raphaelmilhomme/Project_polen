@@ -7,7 +7,7 @@ from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import plotly.graph_objects as go
 from datetime import datetime
- 
+
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="BlessYou · Swiss Pollen Forecast",
@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
- 
+
 # ── Constants ──────────────────────────────────────────────────────────────────
 STATIONS = {
     "Zürich":     {"canton": "ZH", "lat": 47.376, "lon": 8.538},
@@ -34,7 +34,7 @@ STATIONS = {
     "Frauenfeld": {"canton": "TG", "lat": 47.556, "lon": 8.898},
     "Bellinzona": {"canton": "TI", "lat": 46.193, "lon": 9.023},
 }
- 
+
 POLLEN_PARAMS = {
     "Birch":   {"api": "birch_pollen",   "color": "#C4532A", "season": "Mar–May"},
     "Grass":   {"api": "grass_pollen",   "color": "#2d6a4f", "season": "May–Aug"},
@@ -42,7 +42,7 @@ POLLEN_PARAMS = {
     "Hazel":   {"api": "alder_pollen",   "color": "#B8935A", "season": "Jan–Mar"},
     "Alder":   {"api": "alder_pollen",   "color": "#6B8F6C", "season": "Feb–Apr"},
 }
- 
+
 THRESHOLDS = {
     "Birch":   [1, 10,  50, 200],
     "Grass":   [1, 10,  50, 200],
@@ -50,21 +50,20 @@ THRESHOLDS = {
     "Hazel":   [1, 10,  50, 150],
     "Alder":   [1, 10,  50, 150],
 }
- 
+
 LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
- 
- # ── Auto Location Detection ────────────────────────────────────────────────────
+
+# ── Auto Location Detection ────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
 def detect_city() -> str:
     try:
         r = requests.get("https://ipapi.co/json/", timeout=5)
         data = r.json()
         detected = data.get("city", "Zürich")
-        # Match to closest city in our list
         for city in STATIONS.keys():
             if city.lower() in detected.lower() or detected.lower() in city.lower():
                 return city
-        return "Zürich"  # default if no match
+        return "Zürich"
     except Exception:
         return "Zürich"
 
@@ -85,7 +84,8 @@ def fetch_pollen(lat: float, lon: float, pollen_vars: list) -> dict | None:
         return r.json().get("hourly", None)
     except Exception:
         return None
- # ── Weather API ────────────────────────────────────────────────────────────────
+
+# ── Weather API ────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
 def fetch_weather(lat: float, lon: float) -> dict | None:
     url = (
@@ -101,10 +101,51 @@ def fetch_weather(lat: float, lon: float) -> dict | None:
         return r.json().get("current", None)
     except Exception:
         return None
+
+# ── OSM Places API ─────────────────────────────────────────────────────────────
+@st.cache_data(ttl=86400)
+def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
+    url = "https://overpass-api.de/api/interpreter"
+    query = f"[out:json][timeout:25];(node[amenity={amenity}](around:5000,{lat},{lon});way[amenity={amenity}](around:5000,{lat},{lon}););out body center;"
+    try:
+        r = requests.get(
+            url,
+            params={"data": query},
+            timeout=25,
+            headers={"User-Agent": "BlessYou-App/1.0"}
+        )
+        r.raise_for_status()
+        elements = r.json().get("elements", [])
+        places = []
+        for el in elements:
+            tags = el.get("tags", {})
+            name = tags.get("name", "Unknown")
+            street = tags.get("addr:street", "")
+            housenumber = tags.get("addr:housenumber", "")
+            address = f"{street} {housenumber}".strip() or "Address not available"
+            if el["type"] == "node":
+                place_lat = el.get("lat")
+                place_lon = el.get("lon")
+            else:
+                center = el.get("center", {})
+                place_lat = center.get("lat")
+                place_lon = center.get("lon")
+            if place_lat and place_lon:
+                places.append({
+                    "name": name,
+                    "address": address,
+                    "lat": place_lat,
+                    "lon": place_lon,
+                })
+        return places[:8]
+    except Exception as e:
+        st.warning(f"Could not load places: {e}")
+        return []
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def sensitivity_mult(sensitivity):
     return {"Low": 0.5, "Medium": 1.0, "High": 1.5}[sensitivity]
- 
+
 def get_level(value, thresholds, mult=1.0):
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return "none"
@@ -114,7 +155,7 @@ def get_level(value, thresholds, mult=1.0):
     elif v < thresholds[2]: return "moderate"
     elif v < thresholds[3]: return "high"
     else:                   return "very high"
- 
+
 def level_color(level):
     return {
         "none":      "#9e9e9e",
@@ -123,7 +164,7 @@ def level_color(level):
         "high":      "#C4532A",
         "very high": "#5b21b6",
     }.get(level, "#9e9e9e")
- 
+
 def level_emoji(level):
     return {
         "none":      "⚪",
@@ -132,7 +173,7 @@ def level_emoji(level):
         "high":      "🔴",
         "very high": "🟣",
     }.get(level, "⚪")
- 
+
 def is_in_season(pollen):
     month = datetime.now().month
     seasons = {
@@ -143,92 +184,7 @@ def is_in_season(pollen):
         "Alder":   [2, 3, 4],
     }
     return month in seasons.get(pollen, [])
- 
-def advice_text(level, pollen_name):
-    return {
-        "none":      f"✅ No significant {pollen_name} detected. Safe to go outside.",
-        "low":       f"🟢 Low {pollen_name}. Fine for most people. Consider antihistamines if sensitive.",
-        "moderate":  f"🟡 Moderate {pollen_name}. Keep windows closed 6–10am. Pre-medicate before going out.",
-        "high":      f"🔴 High {pollen_name}! Limit outdoor time, especially mornings. Shower after being outside.",
-        "very high": f"🟣 Very high {pollen_name}! Stay indoors if possible. Use air purifiers and take medication.",
-    }.get(level, "")
- 
-def personalized_advice(pollen_levels: dict, sensitivity: str) -> tuple[str, str]:
-    worst_level = "none"
-    worst_pollens = []
-    for pollen, level in pollen_levels.items():
-        if LEVEL_ORDER.index(level) > LEVEL_ORDER.index(worst_level):
-            worst_level = level
-            worst_pollens = [pollen]
-        elif level == worst_level and level != "none":
-            worst_pollens.append(pollen)
- 
-    risky = [p for p, l in pollen_levels.items() if LEVEL_ORDER.index(l) >= LEVEL_ORDER.index("moderate")]
-    all_clear = all(l in ("none", "low") for l in pollen_levels.values())
- 
-    if all_clear:
-        if sensitivity == "High":
-            go_out = "🟢 Levels are low for your allergies. You can go outside — take your antihistamines as a precaution."
-        else:
-            go_out = "✅ All clear for your selected allergies. Enjoy the outdoors!"
-    elif worst_level == "moderate":
-        pollen_list = ", ".join(risky)
-        if sensitivity == "High":
-            go_out = f"⚠️ Moderate {pollen_list} detected. Given your high sensitivity, limit time outside and pre-medicate."
-        elif sensitivity == "Medium":
-            go_out = f"🟡 Moderate {pollen_list}. It's manageable — take antihistamines before heading out."
-        else:
-            go_out = f"🟡 Moderate {pollen_list}, but your low sensitivity means it should be fine with precautions."
-    elif worst_level == "high":
-        pollen_list = ", ".join(worst_pollens)
-        if sensitivity == "High":
-            go_out = f"🔴 High {pollen_list} — strongly advise staying indoors. Your sensitivity makes this a real risk."
-        elif sensitivity == "Medium":
-            go_out = f"🔴 High {pollen_list}. Limit outdoor activity, especially in the morning. Shower after going out."
-        else:
-            go_out = f"🔴 High {pollen_list}. Keep outdoor time short and avoid peak hours."
-    elif worst_level == "very high":
-        pollen_list = ", ".join(worst_pollens)
-        if sensitivity == "High":
-            go_out = f"🟣 Very high {pollen_list} — stay indoors. This is a severe risk for someone with your sensitivity."
-        else:
-            go_out = f"🟣 Very high {pollen_list}. Strongly recommend staying indoors and using air purifiers."
-    else:
-        go_out = "✅ No significant pollen detected for your allergies today."
- 
-    if all_clear:
-        avoid = "💡 Any time of day is fine. Afternoon tends to be slightly better as pollen disperses."
-    elif worst_level in ("moderate", "high", "very high"):
-        if sensitivity == "High":
-            avoid = "⛔ Avoid 6–10am entirely — peak dispersal time. After rain or post-7pm is safest for you."
-        else:
-            avoid = "⚠️ Avoid mornings (6–10am). Best window: afternoon (2–6pm) or right after rainfall."
-    else:
-        avoid = "💡 Afternoons are your best bet. Morning pollen counts are slightly elevated but manageable."
- 
-    return go_out, avoid
- 
-# ── Google Places API ──────────────────────────────────────────────────────────
-@st.cache_data(ttl=86400)
-def fetch_places(lat: float, lon: float, place_type: str, api_key: str) -> list:
-    url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
-    params = {
-        "location": f"{lat},{lon}",
-        "radius": 2000,
-        "type": place_type,
-        "key": api_key,
-    }
-    try:
-        r = requests.get(url, params=params, timeout=15)
-        data = r.json()
-        status = data.get("status", "")
-        if status not in ("OK", "ZERO_RESULTS"):
-            st.warning(f"Places API error ({place_type}): {status} — {data.get('error_message', '')}")
-        return data.get("results", [])
-    except Exception as e:
-        st.warning(f"Places API request failed: {e}")
-        return []
- 
+
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("🌿 BlessYou")
@@ -259,7 +215,7 @@ with st.sidebar:
         st.cache_data.clear()
 
     st.caption("Data: Open-Meteo Air Quality API")
- 
+
 # ── Header ─────────────────────────────────────────────────────────────────────
 col_title, col_meta = st.columns([3, 1])
 with col_title:
@@ -268,32 +224,32 @@ with col_title:
 with col_meta:
     city_info = STATIONS.get(selected_city, {})
     st.metric(label="📍 Location", value=selected_city, delta=f"Canton {city_info.get('canton', '')}")
- 
+
 st.divider()
- 
+
 if not selected_pollens:
     st.info("👈 Select at least one pollen type in the sidebar to get started.")
     st.stop()
- 
-# ── Fetch pollen data ──────────────────────────────────────────────────────────
+
+# ── Fetch all data ─────────────────────────────────────────────────────────────
 home = STATIONS[selected_city]
 mult = sensitivity_mult(sensitivity)
 api_vars = list({POLLEN_PARAMS[p]["api"] for p in selected_pollens})
- 
+
 with st.spinner(f"Loading pollen forecast for {selected_city}…"):
     hourly = fetch_pollen(home["lat"], home["lon"], api_vars)
- 
+
 if not hourly:
     st.error("❌ Could not load pollen data from Open-Meteo. Check your connection.")
     st.stop()
- 
+
 df = pd.DataFrame(hourly)
 df["time"] = pd.to_datetime(df["time"])
 df = df.sort_values("time").reset_index(drop=True)
- 
+
 today = datetime.now().date()
 today_df = df[df["time"].dt.date == today]
- 
+
 today_vals = {}
 for pollen in selected_pollens:
     api_key = POLLEN_PARAMS[pollen]["api"]
@@ -302,10 +258,17 @@ for pollen in selected_pollens:
         today_vals[pollen] = float(vals.max()) if len(vals) > 0 else np.nan
     else:
         today_vals[pollen] = np.nan
- 
-# ── Today's overview ───────────────────────────────────────────────────────────
-st.subheader("Today's Pollen Levels")
- 
+
+with st.spinner("Loading weather data..."):
+    weather = fetch_weather(home["lat"], home["lon"])
+
+with st.spinner("Loading pharmacies and doctors..."):
+    pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
+    doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
+
+# ── Section 1: Today's Pollen Levels ──────────────────────────────────────────
+st.subheader("🌿 Today's Pollen Levels")
+
 cols = st.columns(len(selected_pollens))
 for i, pollen in enumerate(selected_pollens):
     val = today_vals.get(pollen, np.nan)
@@ -321,13 +284,11 @@ for i, pollen in enumerate(selected_pollens):
             delta_color="off",
         )
         st.caption(f"{level_emoji(level)} {level.upper()}")
- 
-st.divider()
- # ── Live Weather Conditions ────────────────────────────────────────────────────
-st.subheader("🌤️ Live Weather Conditions")
 
-with st.spinner("Loading weather data..."):
-    weather = fetch_weather(home["lat"], home["lon"])
+st.divider()
+
+# ── Section 2: Live Weather Conditions ────────────────────────────────────────
+st.subheader("🌤️ Live Weather Conditions")
 
 if weather:
     temp     = weather.get("temperature_2m", "N/A")
@@ -356,121 +317,9 @@ else:
 
 st.divider()
 
- 
-# ── Nearby pharmacies & doctors ───────────────────────────────────────────────
-st.subheader("💊 Nearby Pharmacies & Doctors")
-st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}")
+# ── Section 3: Switzerland Pollen Map ─────────────────────────────────────────
+st.subheader("🗺️ Switzerland Pollen Map")
 
-@st.cache_data(ttl=86400)
-def fetch_places_osm(lat: float, lon: float, amenity: str) -> list:
-    url = "https://overpass-api.de/api/interpreter"
-    query = f"[out:json][timeout:25];(node[amenity={amenity}](around:5000,{lat},{lon});way[amenity={amenity}](around:5000,{lat},{lon}););out body center;"
-    try:
-        r = requests.get(
-            url,
-            params={"data": query},
-            timeout=25,
-            headers={"User-Agent": "BlessYou-App/1.0"}
-        )
-        r.raise_for_status()
-        elements = r.json().get("elements", [])
-        places = []
-        for el in elements:
-            tags = el.get("tags", {})
-            name = tags.get("name", "Unknown")
-            street = tags.get("addr:street", "")
-            housenumber = tags.get("addr:housenumber", "")
-            address = f"{street} {housenumber}".strip() or "Address not available"
-            # Get coordinates
-            if el["type"] == "node":
-                place_lat = el.get("lat")
-                place_lon = el.get("lon")
-            else:
-                center = el.get("center", {})
-                place_lat = center.get("lat")
-                place_lon = center.get("lon")
-            if place_lat and place_lon:
-                places.append({
-                    "name": name,
-                    "address": address,
-                    "lat": place_lat,
-                    "lon": place_lon,
-                })
-        return places[:8]
-    except Exception as e:
-        st.warning(f"Could not load places: {e}")
-        return []
-
-with st.spinner("Loading pharmacies and doctors..."):
-    pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
-    doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
-
-show_list = st.toggle("📋 Show list of pharmacies & doctors", value=False)
-
-if show_list:
-    col_pharm, col_doc = st.columns(2)
-    with col_pharm:
-        st.markdown("**💊 Pharmacies nearby**")
-        if pharmacies:
-            for p in pharmacies:
-                st.markdown(f"🏥 **{p['name']}**  \n📍 {p['address']}")
-        else:
-            st.info("No pharmacies found nearby.")
-    with col_doc:
-        st.markdown("**🩺 Doctors nearby**")
-        if doctors:
-            for d in doctors:
-                st.markdown(f"👨‍⚕️ **{d['name']}**  \n📍 {d['address']}")
-        else:
-            st.info("No doctors found nearby.")
-
-st.divider()
- 
-# ── Forecast chart ─────────────────────────────────────────────────────────────
-st.subheader("5-Day Pollen Forecast")
- 
-fig = go.Figure()
-for pollen in selected_pollens:
-    api_key = POLLEN_PARAMS[pollen]["api"]
-    if api_key not in df.columns:
-        continue
-    vals = pd.to_numeric(df[api_key], errors="coerce").clip(lower=0)
-    clr = POLLEN_PARAMS[pollen]["color"]
-    r, g, b = int(clr[1:3], 16), int(clr[3:5], 16), int(clr[5:7], 16)
-    fig.add_trace(go.Scatter(
-        x=df["time"], y=vals, name=pollen,
-        line=dict(color=clr, width=2.5),
-        fill="tozeroy", fillcolor=f"rgba({r},{g},{b},0.10)",
-        mode="lines",
-    ))
- 
-fig.add_vline(
-    x=datetime.now().timestamp() * 1000,
-    line_dash="dash", line_color="#adb5bd",
-    annotation_text="Now", annotation_position="top right",
-)
- 
-t = THRESHOLDS[selected_pollens[0]]
-fig.add_hrect(y0=0,    y1=t[0], fillcolor="green",  opacity=0.03, line_width=0)
-fig.add_hrect(y0=t[0], y1=t[1], fillcolor="green",  opacity=0.05, line_width=0)
-fig.add_hrect(y0=t[1], y1=t[2], fillcolor="orange", opacity=0.05, line_width=0)
-fig.add_hrect(y0=t[2], y1=t[3], fillcolor="red",    opacity=0.05, line_width=0)
- 
-fig.update_layout(
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-    xaxis=dict(title="", gridcolor="#f0f0f0"),
-    yaxis=dict(title="Pollen (grains/m³)", gridcolor="#f0f0f0"),
-    plot_bgcolor="white",
-    paper_bgcolor="white",
-    margin=dict(l=10, r=10, t=40, b=10),
-    height=360,
-)
-st.plotly_chart(fig, use_container_width=True)
- 
- 
-# ── Switzerland map ────────────────────────────────────────────────────────────
-st.subheader("Switzerland Pollen Map")
- 
 @st.cache_data(ttl=3600)
 def fetch_all_stations(pollen_vars: tuple) -> dict:
     results = {}
@@ -489,17 +338,15 @@ def fetch_all_stations(pollen_vars: tuple) -> dict:
                     city_vals[var] = 0.0
             results[city] = city_vals
     return results
- 
+
 with st.spinner("Fetching map data for all Swiss cities…"):
     all_data = fetch_all_stations(tuple(api_vars))
- 
+
 def build_map(weather=None, pharmacies=[], doctors=[]):
     m = folium.Map(
         location=[46.8, 8.2], zoom_start=8,
         tiles="CartoDB positron", control_scale=True,
-        min_zoom=7,
-        max_zoom=13,
-        max_bounds=True,
+        min_zoom=7, max_zoom=13, max_bounds=True,
     )
     m.fit_bounds([[45.8, 5.9], [47.9, 10.5]])
     m.options['minZoom'] = 7
@@ -577,14 +424,78 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
         ).add_to(m)
 
     return m
- 
 
+st_folium(build_map(weather=weather, pharmacies=pharmacies, doctors=doctors), height=460, use_container_width=True)
 
-st_folium(build_map(weather=weather, pharmacies=pharmacies, doctors=doctors), height=460, use_container_width=True) 
- 
- 
-# ── Footer ─────────────────────────────────────────────────────────────────────
 st.divider()
-st.caption(
-    "🌿 BlessYou · Pollen data: Open-Meteo Air Quality API "
+
+# ── Section 4: 5-Day Pollen Forecast ──────────────────────────────────────────
+st.subheader("📈 5-Day Pollen Forecast")
+
+fig = go.Figure()
+for pollen in selected_pollens:
+    api_key = POLLEN_PARAMS[pollen]["api"]
+    if api_key not in df.columns:
+        continue
+    vals = pd.to_numeric(df[api_key], errors="coerce").clip(lower=0)
+    clr = POLLEN_PARAMS[pollen]["color"]
+    r, g, b = int(clr[1:3], 16), int(clr[3:5], 16), int(clr[5:7], 16)
+    fig.add_trace(go.Scatter(
+        x=df["time"], y=vals, name=pollen,
+        line=dict(color=clr, width=2.5),
+        fill="tozeroy", fillcolor=f"rgba({r},{g},{b},0.10)",
+        mode="lines",
+    ))
+
+fig.add_vline(
+    x=datetime.now().timestamp() * 1000,
+    line_dash="dash", line_color="#adb5bd",
+    annotation_text="Now", annotation_position="top right",
 )
+
+t = THRESHOLDS[selected_pollens[0]]
+fig.add_hrect(y0=0,    y1=t[0], fillcolor="green",  opacity=0.03, line_width=0)
+fig.add_hrect(y0=t[0], y1=t[1], fillcolor="green",  opacity=0.05, line_width=0)
+fig.add_hrect(y0=t[1], y1=t[2], fillcolor="orange", opacity=0.05, line_width=0)
+fig.add_hrect(y0=t[2], y1=t[3], fillcolor="red",    opacity=0.05, line_width=0)
+
+fig.update_layout(
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+    xaxis=dict(title="", gridcolor="#f0f0f0"),
+    yaxis=dict(title="Pollen (grains/m³)", gridcolor="#f0f0f0"),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+    margin=dict(l=10, r=10, t=40, b=10),
+    height=360,
+)
+st.plotly_chart(fig, use_container_width=True)
+
+st.divider()
+
+# ── Section 5: Nearby Pharmacies & Doctors ────────────────────────────────────
+st.subheader("💊 Nearby Pharmacies & Doctors")
+st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}")
+
+show_list = st.toggle("📋 Show list of pharmacies & doctors", value=False)
+
+if show_list:
+    col_pharm, col_doc = st.columns(2)
+    with col_pharm:
+        st.markdown("**💊 Pharmacies nearby**")
+        if pharmacies:
+            for p in pharmacies:
+                st.markdown(f"🏥 **{p['name']}**  \n📍 {p['address']}")
+        else:
+            st.info("No pharmacies found nearby.")
+    with col_doc:
+        st.markdown("**🩺 Doctors nearby**")
+        if doctors:
+            for d in doctors:
+                st.markdown(f"👨‍⚕️ **{d['name']}**  \n📍 {d['address']}")
+        else:
+            st.info("No doctors found nearby.")
+
+st.divider()
+
+# ── Footer ─────────────────────────────────────────────────────────────────────
+st.caption("🌿 BlessYou · Pollen data: Open-Meteo Air Quality API · Weather: Open-Meteo · Places: OpenStreetMap")
