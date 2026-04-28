@@ -323,37 +323,6 @@ else:
 
 st.divider()
 
-# ── Personalized advice ────────────────────────────────────────────────────────
-st.subheader("Personalized Advice")
- 
-pollen_levels = {
-    pollen: get_level(today_vals.get(pollen, np.nan), THRESHOLDS[pollen], mult)
-    for pollen in selected_pollens
-}
- 
-go_out, avoid = personalized_advice(pollen_levels, sensitivity)
- 
-worst_level = max(pollen_levels.values(), key=lambda l: LEVEL_ORDER.index(l))
-col_go, col_avoid = st.columns(2)
-with col_go:
-    if worst_level in ("none", "low"):
-        st.success(f"**Should you go outside?**\n\n{go_out}")
-    elif worst_level == "moderate":
-        st.warning(f"**Should you go outside?**\n\n{go_out}")
-    else:
-        st.error(f"**Should you go outside?**\n\n{go_out}")
-with col_avoid:
-    st.info(f"**Best & worst times today**\n\n{avoid}")
- 
-for pollen in selected_pollens:
-    level = pollen_levels[pollen]
-    msg = advice_text(level, pollen)
-    if level in ("none", "low"):
-        st.success(msg)
-    elif level == "moderate":
-        st.warning(msg)
-    else:
-        st.error(msg)
  
 # ── Nearby pharmacies & doctors ───────────────────────────────────────────────
 st.subheader("💊 Nearby Pharmacies & Doctors")
