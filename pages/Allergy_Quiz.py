@@ -1,5 +1,4 @@
 import streamlit as st
-import requests
 import numpy as np
 from datetime import datetime
 
@@ -45,10 +44,9 @@ col3, col4 = st.columns(2)
 with col3:
     worse_wind = st.radio("🌬️ Symptoms worse on windy days?", ["No", "A little", "Yes, much worse"], horizontal=True)
     better_rain = st.radio("🌧️ Symptoms better when it rains?", ["No", "A little", "Yes, much better"], horizontal=True)
-    worse_outside = st.radio("🌳 Symptoms worse when outside?", ["No", "A little", "Yes, much worse"], horizontal=True)
 
 with col4:
-    better_inside = st.radio("🏠 Symptoms better indoors?", ["No", "A little", "Yes, much better"], horizontal=True)
+    worse_outside = st.radio("🌳 Symptoms worse when outside?", ["No", "A little", "Yes, much worse"], horizontal=True)
     worse_morning = st.radio("🌅 Symptoms worse in the morning?", ["No", "A little", "Yes, much worse"], horizontal=True)
     helped_antihistamine = st.radio("💊 Have antihistamines helped before?", ["Never tried", "No", "A little", "Yes"], horizontal=True)
 
@@ -82,12 +80,10 @@ st.divider()
 # ── Calculate Results ──────────────────────────────────────────────────────────
 if st.button("🔍 Analyse My Symptoms", use_container_width=True):
 
-    # Score mapping
     freq_score = {"Never": 0, "Rarely": 1, "Sometimes": 2, "Often": 3, "Always": 4}
     trigger_score = {"No": 0, "A little": 1, "Yes, much worse": 2, "Yes, much better": 2}
     severity_score = {"No symptoms": 0, "Mild": 1, "Moderate": 2, "Severe": 3, "Unbearable": 4}
 
-    # Base symptom score
     symptom_total = (
         freq_score[sneezing] +
         freq_score[itchy_eyes] +
@@ -99,21 +95,17 @@ if st.button("🔍 Analyse My Symptoms", use_container_width=True):
         freq_score[headache]
     )
 
-    # Trigger score
     trigger_total = (
         trigger_score.get(worse_wind, 0) +
         trigger_score.get(better_rain, 0) +
         trigger_score.get(worse_outside, 0) +
-        trigger_score.get(better_inside, 0) +
         trigger_score.get(worse_morning, 0)
     )
 
-    # Overall allergy likelihood
     overall = symptom_total + trigger_total + severity_score[severity]
     max_score = 32
     likelihood = min(int((overall / max_score) * 100), 100)
 
-    # Pollen type matching based on months
     pollen_months = {
         "Hazel":   ["January", "February", "March"],
         "Alder":   ["February", "March", "April"],
@@ -126,34 +118,28 @@ if st.button("🔍 Analyse My Symptoms", use_container_width=True):
     for pollen, months in pollen_months.items():
         match = len(set(worst_months) & set(months))
         base = (match / max(len(months), 1)) * 60
-        # Add symptom boost
-        if freq_score[sneezing] >= 2:      base += 10
-        if freq_score[itchy_eyes] >= 2:    base += 10
-        if freq_score[runny_nose] >= 2:    base += 10
-        if worse_wind == "Yes, much worse": base += 5
+        if freq_score[sneezing] >= 2:         base += 10
+        if freq_score[itchy_eyes] >= 2:       base += 10
+        if freq_score[runny_nose] >= 2:       base += 10
+        if worse_wind == "Yes, much worse":   base += 5
         if better_rain == "Yes, much better": base += 5
         pollen_scores[pollen] = min(int(base), 99)
 
-    # Sort by score
     sorted_pollens = sorted(pollen_scores.items(), key=lambda x: x[1], reverse=True)
 
-    # ── Display Results ────────────────────────────────────────────────────────
     st.divider()
     st.subheader("🔬 Your Results")
 
-    # Overall likelihood
     if likelihood < 20:
-        st.success(f"**✅ Low likelihood of pollen allergy ({likelihood}%)**\n\nYour symptoms don't strongly suggest a pollen allergy. They could be caused by other factors like a cold or dust allergy.")
+        st.success(f"**✅ Low likelihood of pollen allergy ({likelihood}%)**\n\nYour symptoms don't strongly suggest a pollen allergy.")
     elif likelihood < 50:
         st.warning(f"**🟡 Moderate likelihood of pollen allergy ({likelihood}%)**\n\nSome of your symptoms suggest a possible pollen allergy. Consider speaking to a doctor.")
     elif likelihood < 75:
-        st.error(f"**🔴 High likelihood of pollen allergy ({likelihood}%)**\n\nYour symptoms strongly suggest a pollen allergy. We recommend consulting a doctor or allergist.")
+        st.error(f"**🔴 High likelihood of pollen allergy ({likelihood}%)**\n\nYour symptoms strongly suggest a pollen allergy. We recommend consulting a doctor.")
     else:
-        st.error(f"**🟣 Very high likelihood of pollen allergy ({likelihood}%)**\n\nYour symptoms are very consistent with a pollen allergy. Please consult a doctor as soon as possible.")
+        st.error(f"**🟣 Very high likelihood of pollen allergy ({likelihood}%)**\n\nYour symptoms are very consistent with a pollen allergy. Please consult a doctor.")
 
     st.divider()
-
-    # Pollen type breakdown
     st.subheader("🌿 Which Pollen Are You Most Likely Allergic To?")
 
     for pollen, score in sorted_pollens:
@@ -176,9 +162,8 @@ if st.button("🔍 Analyse My Symptoms", use_container_width=True):
                 st.caption(f"{score}% match")
 
     st.divider()
-
-    # Severity assessment
     st.subheader("📊 Severity Assessment")
+
     sev_map = {
         "No symptoms": ("🟢", "No treatment needed"),
         "Mild": ("🟡", "Over-the-counter antihistamines may help"),
@@ -190,12 +175,9 @@ if st.button("🔍 Analyse My Symptoms", use_container_width=True):
     st.info(f"{sev_emoji} **Severity: {severity}**\n\n💡 {sev_advice}")
 
     st.divider()
-
-    # Recommendations
     st.subheader("💊 Recommendations")
 
     top_pollen = sorted_pollens[0][0] if sorted_pollens else "Birch"
-    top_score = sorted_pollens[0][1] if sorted_pollens else 0
 
     if likelihood >= 50:
         st.success(
@@ -215,12 +197,11 @@ if st.button("🔍 Analyse My Symptoms", use_container_width=True):
         )
 
     st.divider()
+    show_report = st.toggle("📋 Show my report summary (to share with your doctor)", value=False)
 
-    # Printable report
-    st.subheader("📋 Your Report Summary")
-    st.caption("You can screenshot this and show it to your doctor!")
-
-    st.code(f"""
+    if show_report:
+        st.caption("You can screenshot this and show it to your doctor!")
+        st.code(f"""
 BLESSYOU ALLERGY ASSESSMENT REPORT
 Date: {datetime.now().strftime("%d %B %Y")}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -243,9 +224,10 @@ MAIN SYMPTOMS:
 TRIGGERS:
   • Worse on windy days: {worse_wind}
   • Better when raining: {better_rain}
-  • Better indoors: {better_inside}
+  • Worse outside: {worse_outside}
+  • Worse in morning: {worse_morning}
 
 ⚠️ This is NOT a medical diagnosis.
    Please consult a qualified doctor.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    """)
+        """)
