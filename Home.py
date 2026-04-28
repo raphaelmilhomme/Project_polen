@@ -514,7 +514,11 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
     m = folium.Map(
         location=[46.8, 8.2], zoom_start=8,
         tiles="CartoDB positron", control_scale=True,
+        min_zoom=7,
+        max_zoom=13,
+        max_bounds=True,
     )
+    m.fit_bounds([[45.8, 5.9], [47.9, 10.5]])
     heat_pts = []
     for city, info in STATIONS.items():
         city_vals = all_data.get(city, {})
@@ -541,13 +545,13 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
             popup=folium.Popup(popup_html, max_width=200),
             tooltip=f"{city}: {worst}",
         ).add_to(m)
- 
+
     HeatMap(
         heat_pts, radius=55, blur=40, min_opacity=0.3,
         gradient={"0.0": "#2d6a4f", "0.35": "#B8935A",
                   "0.65": "#C4532A", "1.0": "#5b21b6"},
     ).add_to(m)
- 
+
     weather_popup = f"<b>📍 {selected_city}</b><br>"
     if weather:
         temp     = weather.get("temperature_2m", "N/A")
@@ -566,7 +570,6 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
         icon=folium.Icon(color="green", icon="home", prefix="fa"),
     ).add_to(m)
 
-    # Add pharmacy markers
     for p in pharmacies:
         folium.Marker(
             [p["lat"], p["lon"]],
@@ -578,7 +581,6 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
             icon=folium.Icon(color="red", icon="plus", prefix="fa"),
         ).add_to(m)
 
-    # Add doctor markers
     for d in doctors:
         folium.Marker(
             [d["lat"], d["lon"]],
