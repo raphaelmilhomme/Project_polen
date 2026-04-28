@@ -196,10 +196,14 @@ with st.sidebar:
         options=list(POLLEN_PARAMS.keys()),
         default=["Birch", "Grass"],
     )
-    sensitivity = st.select_slider(
-        "Sensitivity level",
-        options=["Low", "Medium", "High"],
-        value="Medium",
+    st.markdown("**🎚️ Your sensitivity per pollen:**")
+    sensitivities = {}
+    for pollen in selected_pollens:
+        sensitivities[pollen] = st.select_slider(
+            f"{pollen}",
+            options=["Low", "Medium", "High"],
+            value="Medium",
+            key=f"sens_{pollen}"
     )
     detected_city = detect_city()
     city_list = list(STATIONS.keys())
@@ -233,7 +237,7 @@ if not selected_pollens:
 
 # ── Fetch all data ─────────────────────────────────────────────────────────────
 home = STATIONS[selected_city]
-mult = sensitivity_mult(sensitivity)
+mult = 1.0  # default, will be overridden per pollen
 api_vars = list({POLLEN_PARAMS[p]["api"] for p in selected_pollens})
 
 with st.spinner(f"Loading pollen forecast for {selected_city}…"):
@@ -272,7 +276,8 @@ st.subheader("🌿 Today's Pollen Levels")
 cols = st.columns(len(selected_pollens))
 for i, pollen in enumerate(selected_pollens):
     val = today_vals.get(pollen, np.nan)
-    level = get_level(val, THRESHOLDS[pollen], mult)
+    pollen_mult = sensitivity_mult(sensitivities.get(pollen, "Medium"))
+    level = get_level(val, THRESHOLDS[pollen], pollen_mult)
     display_val = f"{val:.0f} gr/m³" if not np.isnan(val) else "N/A"
     in_season = is_in_season(pollen)
     season_label = "🟢 In season" if in_season else "⚪ Out of season"
@@ -359,7 +364,8 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
             api_key = POLLEN_PARAMS[pollen]["api"]
             val = city_vals.get(api_key, 0.0)
             total += val
-            lv = get_level(val, THRESHOLDS[pollen], mult)
+            pollen_mult = sensitivity_mult(sensitivities.get(pollen, "Medium"))
+            lv = get_level(val, THRESHOLDS[pollen], pollen_mult)
             if LEVEL_ORDER.index(lv) > LEVEL_ORDER.index(worst):
                 worst = lv
         heat_pts.append([info["lat"], info["lon"], min(total, 400)])
