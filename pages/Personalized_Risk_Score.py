@@ -169,7 +169,16 @@ st.subheader("🎯 Your Risk Score")
 
 # Calculate score
 raw_scores = [level_scores[pollen_levels[p]] for p in selected_pollens]
-avg_raw = sum(raw_scores) / len(raw_scores)
+
+# Worst allergy drives the score
+worst_raw = max(raw_scores)
+
+# Each additional allergy contributes 20% of its value
+other_scores = sorted(raw_scores, reverse=True)[1:]
+additional = sum(s * 0.2 for s in other_scores)
+
+# Final base score
+avg_raw = min(worst_raw + additional, 10.0)
 
 # Personal factors
 age_factor = 1.2 if age < 12 or age > 65 else 1.0
