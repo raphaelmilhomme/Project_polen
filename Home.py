@@ -425,6 +425,21 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
 
     return m
 
+col_tog1, col_tog2 = st.columns(2)
+with col_tog1:
+    show_pharmacies = st.toggle("💊 Show pharmacies on map", value=False)
+with col_tog2:
+    show_doctors = st.toggle("🩺 Show doctors on map", value=False)
+
+st_folium(
+    build_map(
+        weather=weather,
+        pharmacies=pharmacies if show_pharmacies else [],
+        doctors=doctors if show_doctors else [],
+    ),
+    height=460,
+    use_container_width=True
+)
 
 st.divider()
 
