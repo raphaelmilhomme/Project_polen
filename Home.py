@@ -196,16 +196,11 @@ with st.sidebar:
         options=list(POLLEN_PARAMS.keys()),
         default=["Birch", "Grass"],
     )
-    st.markdown("**🎚️ Sensitivity per pollen:**")
-    sensitivities = {}
-    for pollen in selected_pollens:
-        sensitivities[pollen] = st.select_slider(
-        f"{pollen}",
-            options=["Low", "Medium", "High"],
-            value="Medium",
-            key=f"sens_{pollen}"
+    sensitivity = st.select_slider(
+        "Sensitivity level",
+        options=["Low", "Medium", "High"],
+        value="Medium",
     )
-
     detected_city = detect_city()
     city_list = list(STATIONS.keys())
     default_index = city_list.index(detected_city) if detected_city in city_list else 0
@@ -430,21 +425,6 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
 
     return m
 
-col_tog1, col_tog2 = st.columns(2)
-with col_tog1:
-    show_pharmacies = st.toggle("💊 Show pharmacies on map", value=False)
-with col_tog2:
-    show_doctors = st.toggle("🩺 Show doctors on map", value=False)
-
-st_folium(
-    build_map(
-        weather=weather,
-        pharmacies=pharmacies if show_pharmacies else [],
-        doctors=doctors if show_doctors else [],
-    ),
-    height=460,
-    use_container_width=True
-)
 
 st.divider()
 
