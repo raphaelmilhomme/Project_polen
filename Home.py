@@ -501,9 +501,21 @@ def build_map():
                   "0.65": "#C4532A", "1.0": "#5b21b6"},
     ).add_to(m)
  
+    weather_popup = f"<b>📍 {selected_city}</b><br>"
+    if weather:
+        temp     = weather.get("temperature_2m", "N/A")
+        humidity = weather.get("relative_humidity_2m", "N/A")
+        wind     = weather.get("wind_speed_10m", "N/A")
+        rain     = weather.get("precipitation", "N/A")
+        weather_popup += (
+            f"🌡️ {temp}°C &nbsp; 💧 {humidity}%<br>"
+            f"🌬️ {wind} km/h &nbsp; 🌧️ {rain}mm"
+        )
+
     folium.Marker(
         [home["lat"], home["lon"]],
-        tooltip=f"📍 {selected_city}",
+        tooltip=f"📍 {selected_city} — click for weather",
+        popup=folium.Popup(weather_popup, max_width=250),
         icon=folium.Icon(color="green", icon="home", prefix="fa"),
     ).add_to(m)
     return m
