@@ -6,6 +6,8 @@ st.set_page_config(page_title="Risk Score", page_icon="🎯")
 st.title("🎯 Your Personalized Risk Score")
 st.caption("A score calculated from your pollen levels, sensitivity, and recent reactions.")
 
+print("hello")
+
 THRESHOLDS = {
     "Birch":   [1, 10,  50, 200],
     "Grass":   [1, 10,  50, 200],
