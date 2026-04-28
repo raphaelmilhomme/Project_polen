@@ -226,7 +226,7 @@ with st.sidebar:
     st.title("🌿 BlessYou")
     st.caption("Swiss Pollen Forecast")
     st.divider()
- 
+
     selected_pollens = st.multiselect(
         "Your pollen allergies",
         options=list(POLLEN_PARAMS.keys()),
@@ -241,15 +241,15 @@ with st.sidebar:
     city_list = list(STATIONS.keys())
     default_index = city_list.index(detected_city) if detected_city in city_list else 0
 
-selected_city = st.selectbox(
-    "📍 Your location (auto-detected)",
-    options=city_list,
-    index=default_index,
-)
+    selected_city = st.selectbox(
+        "📍 Your location (auto-detected)",
+        options=city_list,
+        index=default_index,
+    )
     st.divider()
     if st.button("↻ Refresh Data", use_container_width=True):
         st.cache_data.clear()
- 
+
     st.caption("Data: Open-Meteo Air Quality API")
  
 # ── Header ─────────────────────────────────────────────────────────────────────
