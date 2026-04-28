@@ -392,8 +392,6 @@ if show_list:
             st.info("No doctors found nearby.")
 
 st.divider()
-
-st.divider()
  
 # ── Forecast chart ─────────────────────────────────────────────────────────────
 st.subheader("5-Day Pollen Forecast")
