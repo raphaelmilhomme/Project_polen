@@ -463,7 +463,7 @@ def fetch_all_stations(pollen_vars: tuple) -> dict:
 with st.spinner("Fetching map data for all Swiss cities…"):
     all_data = fetch_all_stations(tuple(api_vars))
  
-def build_map():
+def build_map(weather=None):
     m = folium.Map(
         location=[46.8, 8.2], zoom_start=8,
         tiles="CartoDB positron", control_scale=True,
@@ -520,7 +520,7 @@ def build_map():
     ).add_to(m)
     return m
  
-st_folium(build_map(), height=460, use_container_width=True)
+st_folium(build_map(weather=weather), height=460, use_container_width=True)
  
 st.divider()
  
