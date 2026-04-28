@@ -322,31 +322,3 @@ elif medication == "Both antihistamines + nasal spray":
 
 st.divider()
 
-# ── Section 5: Community Tips ─────────────────────────────────────────────────
-st.subheader("🤝 Community Tips")
-st.caption("Share tips with other allergy sufferers in Switzerland!")
-
-# Initialize storage
-if "community_tips" not in st.session_state:
-    st.session_state.community_tips = [
-        {"city": "Zürich", "date": "28 Apr", "tip": "Wearing sunglasses helps protect your eyes from pollen! 😎"},
-        {"city": "Bern", "date": "28 Apr", "tip": "Showering after being outside removes pollen from hair and skin!"},
-        {"city": "Geneva", "date": "28 Apr", "tip": "Keep windows closed between 6-10am when pollen is highest."},
-    ]
-
-# Show existing tips
-for tip in st.session_state.community_tips[-10:]:
-    st.markdown(f"💬 **{tip['city']}** · {tip['date']}: {tip['tip']}")
-
-# Add new tip
-with st.form("tip_form"):
-    new_tip = st.text_input("Share a tip with the community!")
-    submitted = st.form_submit_button("Share tip 💬")
-    if submitted and new_tip:
-        st.session_state.community_tips.append({
-            "city": selected_city,
-            "date": datetime.now().strftime("%d %b"),
-            "tip": new_tip,
-        })
-        st.success("✅ Tip shared!")
-        st.rerun()
