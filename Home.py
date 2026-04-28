@@ -10,7 +10,7 @@ from datetime import datetime
  
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="BlessYou · Swiss Pollen Forecast",
+    page_title="BlessYous · Swiss Pollen Forecast",
     page_icon="🌻",
     layout="wide",
     initial_sidebar_state="expanded",
