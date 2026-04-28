@@ -559,7 +559,7 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
             f"🌬️ {wind} km/h &nbsp; 🌧️ {rain}mm"
         )
 
-   folium.Marker(
+    folium.Marker(
         [home["lat"], home["lon"]],
         tooltip=f"📍 {selected_city} — click for weather",
         popup=folium.Popup(weather_popup, max_width=250),
