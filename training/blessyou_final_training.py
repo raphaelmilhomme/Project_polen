@@ -1,14 +1,14 @@
-# ============================================================
+
 # BlessYou — Final Training Notebook
 # Datasets: PlantCLEF + iNaturalist (already downloaded)
 # Model: EfficientNetB3
 # Min photos: 100 | Epochs: 75
-# ============================================================
 
-import os, json, shutil
+
+import os, json, shutil # os and shtil for files managemet
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.applications import EfficientNetB3
+import tensorflow as tf #neutral network
+from tensorflow.keras.applications import EfficientNetB3 # keras =specific component for training
 from tensorflow.keras import layers, Model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.metrics import TopKCategoricalAccuracy
@@ -18,14 +18,14 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 print(f"TensorFlow: {tf.__version__}")
 print(f"GPU: {len(tf.config.list_physical_devices('GPU')) > 0}")
 
-# ── Paths ─────────────────────────────────────────────────────
+# ── Paths # define where the data set are located on Kaggle
 PLANCLEF_PATH  = "/kaggle/input/datasets/datajameson/planclef/training"
 INAT_PATH      = "/kaggle/input/notebookf1f2bfe39e/inaturalist_swiss"
 COMBINED_PATH  = "/kaggle/working/combined_dataset"
-OUTPUT_PATH    = "/kaggle/working"
-IMG_SIZE       = 300
-BATCH_SIZE     = 32
-MIN_PHOTOS     = 100
+OUTPUT_PATH    = "/kaggle/working" # where to save the combined dataset and the final model 
+IMG_SIZE       = 300 # size compatible with the model
+BATCH_SIZE     = 32 # number of image per batch
+MIN_PHOTOS     = 100 # minimum photo require to enter into the model
 
 # ── Species list ──────────────────────────────────────────────
 plantes_suisse = [
@@ -132,19 +132,16 @@ plantes_allergenes = [
     'Achillea millefolium','Matricaria chamomilla',
 ]
 
-TOUTES_ESPECES = sorted(set(plantes_suisse + plantes_allergenes))
+TOUTES_ESPECES = sorted(set(plantes_suisse + plantes_allergenes)) 
 
-# ═══════════════════════════════════════════════════════════════
+# 
 # STEP 1: Combine PlantCLEF + iNaturalist
-# ═══════════════════════════════════════════════════════════════
-print("\n" + "="*60)
-print("STEP 1: Combining PlantCLEF + iNaturalist")
-print("="*60)
+# 
 
-os.makedirs(COMBINED_PATH, exist_ok=True)
+os.makedirs(COMBINED_PATH, exist_ok=True) 
 plantes_finales = []
 
-for espece in TOUTES_ESPECES:
+for espece in TOUTES_ESPECES: # for each species we created a combne dataset
     dest = os.path.join(COMBINED_PATH, espece)
     os.makedirs(dest, exist_ok=True)
     count = 0
@@ -169,25 +166,19 @@ for espece in TOUTES_ESPECES:
             )
             count += 1
 
-    if count >= MIN_PHOTOS:
+    if count >= MIN_PHOTOS: #count wether there is minimum 100 photos otherwize, not added in zhe plantes_finals
         plantes_finales.append(espece)
-        print(f"  ✅ {espece}: {count} photos")
-    else:
-        print(f"  ❌ {espece}: {count} photos (below {MIN_PHOTOS})")
-
+   
 plantes_finales = sorted(plantes_finales)
 print(f"\nFinal species: {len(plantes_finales)}")
 
-with open(f"{OUTPUT_PATH}/class_names.json", "w") as f:
+with open(f"{OUTPUT_PATH}/class_names.json", "w") as f: # final list is save in class_names.json which is primordial because it defines the exact order of classes the model learned.
     json.dump(plantes_finales, f, indent=2)
 print("class_names.json saved!")
 
-# ═══════════════════════════════════════════════════════════════
+
 # STEP 2: Train EfficientNetB3
-# ═══════════════════════════════════════════════════════════════
-print("\n" + "="*60)
-print("STEP 2: Training EfficientNetB3")
-print("="*60)
+
 
 datagen = ImageDataGenerator(
     rescale=1./255,
@@ -201,7 +192,8 @@ datagen = ImageDataGenerator(
     brightness_range=[0.7, 1.3],
     channel_shift_range=20.0,
     fill_mode='nearest'
-)
+) # image data generator handles two things: normalizing pixels and data augmentation to artificially create more variety from existing photos.
+# The augmentations include random rotation up to 40 degrees, horizontal flipping, zooming, brightness changes and pixel shifting. 80% of photos go to training and 20% to validation
 
 train_data = datagen.flow_from_directory(
     COMBINED_PATH,
@@ -230,9 +222,10 @@ base_model = EfficientNetB3(
     weights='imagenet',
     include_top=False,
     input_shape=(IMG_SIZE, IMG_SIZE, 3)
-)
+) # EfficientNetB3 is a pre-trained on ImageNet and I used it because it is efficient with small number of datas.
 base_model.trainable = False
 
+#  The head consists of a GlobalAveragePooling2D to compress features, a BatchNormalization to stabilize training, two Dense layers with relu activation to learn plant-specific patterns, and two Dropout layers to prevent overfitting.
 x = base_model.output
 x = layers.GlobalAveragePooling2D()(x)
 x = layers.BatchNormalization()(x)
@@ -245,8 +238,7 @@ output = layers.Dense(NUM_CLASSES, activation='softmax')(x)
 model = Model(inputs=base_model.input, outputs=output)
 print(f"Parameters: {model.count_params():,}")
 
-# Phase 1: Train head
-print("\n=== Phase 1: Training head (10 epochs) ===")
+# Phase 1: Train head; In Phase 1, the base is frozen (trainable=False) so only the new head is trained.
 model.compile(
     optimizer=Adam(learning_rate=0.001),
     loss='categorical_crossentropy',
@@ -254,8 +246,7 @@ model.compile(
 )
 model.fit(train_data, epochs=10, validation_data=val_data)
 
-# Phase 2: Full fine-tuning
-print("\n=== Phase 2: Full fine-tuning (75 epochs) ===")
+# Phase 2: Full fine-tuning; The entire model is unfrozen (trainable=True) and retrained with a much lower learning rate of 0.0001 to avoid destroying the pretrained weights.
 base_model.trainable = True
 model.compile(
     optimizer=Adam(learning_rate=0.0001),
@@ -283,7 +274,7 @@ callbacks = [
         min_lr=1e-8,
         verbose=1
     )
-]
+] # ModelCheckpoint saves the best model automatically, EarlyStopping stops training if accuracy stops improving for 15 epochs, and ReduceLROnPlateau halves the learning rate if the loss plateaus for 4 epochs.
 
 history = model.fit(
     train_data,
@@ -292,15 +283,10 @@ history = model.fit(
     callbacks=callbacks
 )
 
-print(f"\nBest val_accuracy : {max(history.history['val_accuracy']):.3f}")
-print(f"Best val_top5_acc : {max(history.history['val_top5_acc']):.3f}")
 
-# ═══════════════════════════════════════════════════════════════
-# STEP 3: Export ONNX
-# ═══════════════════════════════════════════════════════════════
-print("\n" + "="*60)
-print("STEP 3: Exporting to ONNX")
-print("="*60)
+
+# STEP 3: Export ONNX; The best saved model is loaded and converted from Keras format to ONNX format using tf2onnx
+
 
 import subprocess
 subprocess.run(["pip", "install", "tf2onnx", "-q"])
@@ -318,10 +304,5 @@ tf2onnx.convert.from_keras(
     output_path=f"{OUTPUT_PATH}/model.onnx"
 )
 
-size_mb = os.path.getsize(f"{OUTPUT_PATH}/model.onnx") / 1e6
-print(f"\nONNX saved: {size_mb:.1f} MB")
-print("\n" + "="*60)
-print("DONE! Download from Output tab:")
-print("  - model.onnx")
-print("  - class_names.json")
-print("="*60)
+size_mb = os.path.getsize(f"{OUTPUT_PATH}/model.onnx") / 1e6 #The final model.onnx is what gets uploaded to GitHub and used in the Streamlit app
+
