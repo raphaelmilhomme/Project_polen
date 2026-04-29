@@ -153,7 +153,7 @@ with col_meta:
 
 st.divider()
 
-tab_photo, tab_search = st.tabs(["📷 Identify by Photo", "🔍 Search by Name"])
+tab_photo, tab_search, tab_species = st.tabs(["📷 Identify by Photo", "🔍 Search by Name", "🌿 All Species"])
 
 with tab_photo:
     st.subheader("Identify a Plant")
@@ -226,6 +226,27 @@ with tab_search:
                 st.caption(common_display)
                 show_allergen(sci)
                 st.divider()
+
+
+with tab_species:
+    st.subheader("All 93 Species in our Database")
+    st.caption("Plants compatible with the Photo Identifier")
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Allergenic Species**")
+        for sci in CLASS_NAMES:
+            if sci in ALLERGEN_INFO:
+                info = ALLERGEN_INFO[sci]
+                emoji = INTENSITY_EMOJI.get(info["intensity"], "🟢")
+                common = COMMON_NAMES.get(sci, "")
+                st.caption(f"{emoji} **{sci}** - {common} - {info['season']}")
+    with col2:
+        st.markdown("**Non-Allergenic Species**")
+        for sci in CLASS_NAMES:
+            if sci not in ALLERGEN_INFO:
+                common = COMMON_NAMES.get(sci, "")
+                st.caption(f"✅ **{sci}** - {common}")
 
 st.divider()
 st.caption("🌻 BlessYou · Plant identification powered by EfficientNetB3 · Not a substitute for professional botanical advice")
