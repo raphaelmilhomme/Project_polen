@@ -110,7 +110,7 @@ ALLERGEN_INFO = {
   "Acer pseudoplatanus":{"season":"Apr-May","intensity":"Low","symptoms":["Mild Rhinitis"]},
 }
 
-INTENSITY_EMOJI = {"Very High":"🔴","High":"🟠","Moderate":"🟡","Low":"🟢"}
+INTENSITY_EMOJI = {"High":"🟠","Moderate":"🟡","Low":"🟢"}
 
 @st.cache_resource(show_spinner=False)
 def load_model():
