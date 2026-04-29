@@ -1,12 +1,12 @@
-import streamlit as st
+import streamlit as st # Import necessary libraries
 import numpy as np
 from PIL import Image
 from datetime import datetime
 
-st.set_page_config(page_title="BlessYou - Plant Identifier", page_icon="🌻", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="BlessYou - Plant Identifier", page_icon="🌻", layout="wide", initial_sidebar_state="expanded") # configure the page with the title, icon and wide layout.
 
-MODEL_PATH = "model.onnx"
-IMG_SIZE = (300, 300)
+MODEL_PATH = "model.onnx" # Indicate where to find my model onnx
+IMG_SIZE = (300, 300) # resize photos to fit with my model
 
 CLASS_NAMES = [
   "Acer campestre","Acer platanoides","Acer pseudoplatanus","Achillea millefolium",
@@ -84,7 +84,7 @@ COMMON_NAMES = {
   "Viburnum opulus":"Guelder Rose"
 }
 
-COMMON_TO_SCI = {v.lower(): k for k, v in COMMON_NAMES.items()}
+COMMON_TO_SCI = {v.lower(): k for k, v in COMMON_NAMES.items()} # associate the scientific and english common name of my 93 plants.
 
 ALLERGEN_INFO = {
   "Betula pendula":{"season":"Mar-May","intensity":"High","symptoms":["Rhinitis","Conjunctivitis","Asthma"]},
@@ -108,21 +108,21 @@ ALLERGEN_INFO = {
   "Cirsium arvense":{"season":"Jun-Sep","intensity":"Low","symptoms":["Rhinitis"]},
   "Acer platanoides":{"season":"Apr-May","intensity":"Low","symptoms":["Mild Rhinitis"]},
   "Acer pseudoplatanus":{"season":"Apr-May","intensity":"Low","symptoms":["Mild Rhinitis"]},
-}
+} # I selectect those plant because they are major allerge in Switzerland.
 
-INTENSITY_EMOJI = {"High":"🟠","Moderate":"🟡","Low":"🟢"}
+INTENSITY_EMOJI = {"High":"🟠","Moderate":"🟡","Low":"🟢"} # Associates a colored emoji with each allergen intensity level.
 
 @st.cache_resource(show_spinner=False)
 def load_model():
     import onnxruntime as ort
-    return ort.InferenceSession(MODEL_PATH, providers=["CPUExecutionProvider"])
+    return ort.InferenceSession(MODEL_PATH, providers=["CPUExecutionProvider"]) # loads the ONNX model once into memory.
 
 def preprocess(img):
     img = img.convert("RGB").resize(IMG_SIZE)
     arr = np.array(img, dtype=np.float32) / 255.0
-    return np.expand_dims(arr, axis=0)
+    return np.expand_dims(arr, axis=0) #  prepares the image for the model aka resize them and normalizes pixels between 0 and 1.
 
-def show_allergen(sci_name):
+def show_allergen(sci_name): # Function that associate each plant with there potential allergene, this function happen when one plug allergen plant.
     info = ALLERGEN_INFO.get(sci_name)
     if info:
         emoji = INTENSITY_EMOJI.get(info["intensity"], "🟡")
@@ -135,17 +135,19 @@ def show_allergen(sci_name):
     else:
         st.success("No major pollen allergen recorded for this species.")
 
-with st.sidebar:
-    st.title("🌻 BlessYou")
+with st.sidebar: # The left panel with the BlessYou title and model information.
+    st.title("🌻 BlessYou") 
     st.caption("Plant Identifier")
     st.divider()
     st.caption("MODEL: EfficientNetB3")
     st.caption("SPECIES: 93 Swiss plants")
     st.caption("ACCURACY: Top-1 ~82%")
+    st.caption("ACCURACY: Top-1 ~95%")
     st.caption("SOURCE: PlantCLEF + iNaturalist")
 
+
 col_title, col_meta = st.columns([3, 1])
-with col_title:
+with col_title: # The main title with today's date and number of species.
     st.title("🌻 BlessYou — Plant Identifier")
     st.caption(f"Identify Swiss plants & check allergen info · {datetime.now().strftime('%A, %d %B %Y')}")
 with col_meta:
@@ -155,14 +157,14 @@ st.divider()
 
 tab_photo, tab_search, tab_species = st.tabs(["📷 Identify by Photo", "🔍 Search by Name", "🌿 All Species"])
 
-with tab_photo:
-    st.subheader("Identify a Plant")
+with tab_photo: # part where one put photod
+    st.subheader("Identify a Plant") #  creates the upload zone that accepts JPG, PNG and WEBP files.
     uploaded = st.file_uploader(
         "Upload one or more photos of the same plant to improve accuracy",
         type=["jpg","jpeg","png","webp"],
-        accept_multiple_files=True
+        accept_multiple_files=True # allow to put numerous photos
     )
-    if uploaded:
+    if uploaded: 
         with st.spinner("Analysing..."):
             try:
                 session = load_model()
@@ -171,15 +173,15 @@ with tab_photo:
                 for uploaded_file in uploaded:
                     img = Image.open(uploaded_file)
                     imgs.append(img)
-                    arr = preprocess(img)
+                    arr = preprocess(img) #reshape photo dimension
                     inp = session.get_inputs()[0].name
                     out = session.get_outputs()[0].name
-                    logits = session.run([out], {inp: arr})[0][0]
+                    logits = session.run([out], {inp: arr})[0][0] # sends the image through the ONNX model and gets back raw numbers.
                     e = np.exp(logits - logits.max())
-                    probs = e / e.sum()
+                    probs = e / e.sum() # when there is numerous phots it makes an average to increase accuracy
                     all_probs = probs if all_probs is None else all_probs + probs
                 all_probs /= len(uploaded)
-                top5 = all_probs.argsort()[::-1][:5]
+                top5 = all_probs.argsort()[::-1][:5] #sort probability from higher to lower
                 names = [CLASS_NAMES[i] for i in top5]
                 best = names[0]
                 common = COMMON_NAMES.get(best, "Common name unavailable")
@@ -189,7 +191,7 @@ with tab_photo:
                     with cols[i]:
                         st.image(img, use_container_width=True)
 
-                st.divider()
+                st.divider() # associate plants find in the model with there scientific name, common name and possible allergen.
                 col1, col2 = st.columns([1, 2])
                 with col1:
                     st.metric(label="Scientific Name", value=best)
@@ -197,7 +199,7 @@ with tab_photo:
                 with col2:
                     show_allergen(best)
 
-                st.divider()
+                st.divider() # put the other three alternatives
                 st.subheader("Other Possibilities")
                 for n in names[1:4]:
                     c = COMMON_NAMES.get(n, "")
@@ -210,16 +212,16 @@ with tab_photo:
     else:
         st.info("📷 Upload one or more photos of the same plant to identify it and get allergen information.")
 
-with tab_search:
+with tab_search: # search by name
     st.subheader("Search by Common Name")
     query = st.text_input("Type a plant common name", placeholder="e.g. Silver Birch, Common Ash, Dog Rose...")
     if query:
         q = query.strip().lower()
         sci_match = COMMON_TO_SCI.get(q)
         matches = [(q, sci_match)] if sci_match else [(k, v) for k, v in COMMON_TO_SCI.items() if q in k]
-        if not matches:
+        if not matches: # if nothing match tells you the plant was not found in data set
             st.warning(f'**"{query}"** was not found in our database of 93 Swiss plant species. Try another name or check the spelling.')
-        else:
+        else: # page that appear when you type a valid plant.
             for common_q, sci in matches[:5]:
                 common_display = COMMON_NAMES.get(sci, common_q.title())
                 st.subheader(f"🌿 {sci}")
@@ -228,7 +230,7 @@ with tab_search:
                 st.divider()
 
 
-with tab_species:
+with tab_species: # display all plant in two category depending on allergenes
     st.subheader("All 93 Species in our Database")
     st.caption("Plants compatible with the Photo Identifier")
     st.divider()
@@ -248,5 +250,5 @@ with tab_species:
                 common = COMMON_NAMES.get(sci, "")
                 st.caption(f"✅ **{sci}** - {common}")
 
-st.divider()
+st.divider() # Footer Legal disclaimer at the bottom of the page.
 st.caption("🌻 BlessYou · Plant identification powered by EfficientNetB3 · Not a substitute for professional botanical advice")
