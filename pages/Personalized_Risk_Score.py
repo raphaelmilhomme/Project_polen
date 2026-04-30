@@ -110,7 +110,12 @@ with col1:
     )
 
 with col2:
-    age = st.number_input("🎂 Your age", min_value=1, max_value=100, value=25)
+    age_group = st.radio(
+        "🎂 Your age group",
+        ["Under 12", "12–65", "Over 65"],
+        index=1,
+        horizontal=True,
+    )
     has_asthma = st.radio("🫁 Do you have asthma?", ["No", "Yes"], horizontal=True)
     hours_outside = st.slider("🚶 Hours outside today", 0, 12, 2)
 
@@ -181,7 +186,7 @@ additional = sum(s * 0.2 for s in other_scores)
 avg_raw = min(worst_raw + additional, 10.0)
 
 # Personal factors
-age_factor = 1.2 if age < 12 or age > 65 else 1.0
+age_factor = 1.2 if age_group in ["Under 12", "Over 65"] else 1.0
 asthma_factor = 1.3 if has_asthma == "Yes" else 1.0
 medication_factor = {
     "No medication": 1.0,
@@ -244,7 +249,7 @@ with col_explain:
         f"- Medication: **{medication}**\n"
         f"- Hours outside: **{hours_outside}h**\n"
         f"- Weather impact: **{'↑ worse' if weather_factor > 1 else '↓ better' if weather_factor < 1 else 'neutral'}**\n"
-        f"- Age factor: **{'Yes' if age < 12 or age > 65 else 'No'}**"
+        f"- Age factor: **{'Yes' if age_group in ['Under 12', 'Over 65'] else 'No'}**"
     )
 
 st.divider()
@@ -330,4 +335,3 @@ elif medication == "Both antihistamines + nasal spray":
     )
 
 st.divider()
-
