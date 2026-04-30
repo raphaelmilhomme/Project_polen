@@ -52,7 +52,6 @@ THRESHOLDS = {
 }
 
 LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
-level_scores = {"none": 0, "low": 2, "moderate": 5, "high": 7, "very high": 10}
 
 # ── Auto Location Detection ────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
@@ -192,14 +191,12 @@ with st.sidebar:
     st.caption("Swiss Pollen Forecast")
     st.divider()
 
-    st.markdown("**🌿 Your pollen allergies:**")
     selected_pollens = st.multiselect(
-        "",
+        "Your pollen allergies",
         options=list(POLLEN_PARAMS.keys()),
         default=["Birch", "Grass"],
     )
-
-    st.markdown("**🎚️ Sensitivity per pollen:**")
+    st.markdown("**🎚️ Your sensitivity per pollen:**")
     sensitivities = {}
     for pollen in selected_pollens:
         sensitivities[pollen] = st.select_slider(
@@ -207,27 +204,11 @@ with st.sidebar:
             options=["Low", "Medium", "High"],
             value="Medium",
             key=f"sens_{pollen}"
-        )
-
-    st.divider()
-    st.markdown("**👤 Your profile:**")
-    age = st.number_input("🎂 Age", min_value=1, max_value=100, value=25)
-    has_asthma = st.radio("🫁 Asthma?", ["No", "Yes"], horizontal=True)
-    hours_outside = st.slider("🚶 Hours outside today", 0, 12, 2)
-    medication = st.selectbox(
-        "💊 Medication",
-        [
-            "No medication",
-            "Antihistamines (e.g. Cetirizine)",
-            "Nasal spray",
-            "Both antihistamines + nasal spray",
-        ]
     )
-
-    st.divider()
     detected_city = detect_city()
     city_list = list(STATIONS.keys())
     default_index = city_list.index(detected_city) if detected_city in city_list else 0
+
     selected_city = st.selectbox(
         "📍 Your location (auto-detected)",
         options=city_list,
@@ -236,6 +217,7 @@ with st.sidebar:
     st.divider()
     if st.button("↻ Refresh Data", use_container_width=True):
         st.cache_data.clear()
+
     st.caption("Data: Open-Meteo Air Quality API")
 
 # ── Header ─────────────────────────────────────────────────────────────────────
@@ -255,13 +237,11 @@ if not selected_pollens:
 
 # ── Fetch all data ─────────────────────────────────────────────────────────────
 home = STATIONS[selected_city]
+mult = 1.0  # default, will be overridden per pollen
 api_vars = list({POLLEN_PARAMS[p]["api"] for p in selected_pollens})
 
-with st.spinner(f"Loading data for {selected_city}…"):
+with st.spinner(f"Loading pollen forecast for {selected_city}…"):
     hourly = fetch_pollen(home["lat"], home["lon"], api_vars)
-    weather = fetch_weather(home["lat"], home["lon"])
-    pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
-    doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
 
 if not hourly:
     st.error("❌ Could not load pollen data from Open-Meteo. Check your connection.")
@@ -283,10 +263,12 @@ for pollen in selected_pollens:
     else:
         today_vals[pollen] = np.nan
 
-pollen_levels = {
-    p: get_level(today_vals.get(p, np.nan), THRESHOLDS[p], sensitivity_mult(sensitivities.get(p, "Medium")))
-    for p in selected_pollens
-}
+with st.spinner("Loading weather data..."):
+    weather = fetch_weather(home["lat"], home["lon"])
+
+with st.spinner("Loading pharmacies and doctors..."):
+    pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
+    doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
 
 # ── Section 1: Today's Pollen Levels ──────────────────────────────────────────
 st.subheader("🌿 Today's Pollen Levels")
@@ -294,7 +276,8 @@ st.subheader("🌿 Today's Pollen Levels")
 cols = st.columns(len(selected_pollens))
 for i, pollen in enumerate(selected_pollens):
     val = today_vals.get(pollen, np.nan)
-    level = pollen_levels[pollen]
+    pollen_mult = sensitivity_mult(sensitivities.get(pollen, "Medium"))
+    level = get_level(val, THRESHOLDS[pollen], pollen_mult)
     display_val = f"{val:.0f} gr/m³" if not np.isnan(val) else "N/A"
     in_season = is_in_season(pollen)
     season_label = "🟢 In season" if in_season else "⚪ Out of season"
@@ -312,7 +295,6 @@ st.divider()
 # ── Section 2: Live Weather Conditions ────────────────────────────────────────
 st.subheader("🌤️ Live Weather Conditions")
 
-weather_factor = 1.0
 if weather:
     temp     = weather.get("temperature_2m", "N/A")
     humidity = weather.get("relative_humidity_2m", "N/A")
@@ -326,166 +308,21 @@ if weather:
     wcol4.metric("🌬️ Wind Speed",  f"{wind} km/h")
 
     if isinstance(wind, (int, float)) and wind > 20:
-        st.warning(f"🌬️ High wind today ({wind} km/h) — pollen is spreading more than usual!")
-        weather_factor += 0.2
+        st.warning(f"🌬️ High wind today ({wind} km/h) — pollen is spreading more than usual! Avoid outdoor activities in the morning.")
     elif isinstance(rain, (int, float)) and rain > 0:
-        st.success(f"🌧️ Rain today ({rain}mm) — rain washes pollen out of the air. Good day to go outside!")
-        weather_factor -= 0.2
+        st.success(f"🌧️ Rain today ({rain}mm) — great news! Rain washes pollen out of the air, so levels are lower than usual. Good day to go outside!")
     elif isinstance(humidity, (int, float)) and humidity < 40:
-        st.warning(f"☀️ Low humidity today ({humidity}%) — dry air means pollen stays airborne longer!")
-        weather_factor += 0.1
+        st.warning(f"☀️ Low humidity today ({humidity}%) — dry air means pollen stays airborne longer. Wear sunglasses and consider a mask outdoors!")
     elif isinstance(humidity, (int, float)) and humidity > 70:
-        st.info(f"💧 High humidity today ({humidity}%) — pollen tends to clump and fall to the ground.")
+        st.info(f"💧 High humidity today ({humidity}%) — pollen tends to clump together and fall to the ground. Slightly better conditions than usual!")
     else:
-        st.info(f"🌤️ Normal weather conditions today.")
+        st.info(f"🌤️ Normal weather conditions today — no special weather impact on pollen levels. Check the forecast below for details!")
 else:
     st.warning("Could not load weather data.")
 
 st.divider()
 
-# ── Section 3: Your Personal Risk Score ───────────────────────────────────────
-st.subheader("🎯 Your Personal Risk Score")
-
-raw_scores = [level_scores[pollen_levels[p]] for p in selected_pollens]
-worst_raw = max(raw_scores)
-other_scores = sorted(raw_scores, reverse=True)[1:]
-additional = sum(s * 0.2 for s in other_scores)
-avg_raw = min(worst_raw + additional, 10.0)
-
-age_factor = 1.2 if age < 12 or age > 65 else 1.0
-asthma_factor = 1.3 if has_asthma == "Yes" else 1.0
-medication_factor = {
-    "No medication": 1.0,
-    "Antihistamines (e.g. Cetirizine)": 0.7,
-    "Nasal spray": 0.8,
-    "Both antihistamines + nasal spray": 0.5,
-}[medication]
-exposure_factor = 1 + (hours_outside * 0.05)
-
-final_score = min(round(
-    avg_raw * age_factor * asthma_factor * medication_factor
-    * exposure_factor * weather_factor, 1
-), 10.0)
-
-if final_score <= 2:
-    badge = "🟢 Safe Day"
-elif final_score <= 4:
-    badge = "🟡 Low Risk Day"
-elif final_score <= 6:
-    badge = "🟠 Caution Day"
-elif final_score <= 8:
-    badge = "🔴 High Risk Day"
-else:
-    badge = "🟣 Stay Inside Day"
-
-col_score, col_badge, col_explain = st.columns([1, 1, 2])
-with col_score:
-    st.metric(label="Personal Risk Score", value=f"{final_score} / 10")
-    st.progress(int(final_score * 10))
-with col_badge:
-    st.markdown(f"### {badge}")
-    st.caption("Based on your profile + live data")
-with col_explain:
-    st.info(
-        f"**Score breakdown:**\n\n"
-        f"- Pollen: {', '.join([f'{p} ({pollen_levels[p]})' for p in selected_pollens])}\n"
-        f"- Asthma: **{has_asthma}**\n"
-        f"- Medication: **{medication}**\n"
-        f"- Hours outside: **{hours_outside}h**\n"
-        f"- Weather impact: **{'↑ worse' if weather_factor > 1 else '↓ better' if weather_factor < 1 else 'neutral'}**\n"
-        f"- Age factor: **{'Yes' if age < 12 or age > 65 else 'No'}**"
-    )
-
-st.divider()
-
-# ── Section 4: Personalized Recommendations ───────────────────────────────────
-st.subheader("💡 Personalized Recommendations")
-
-# Should you go outside?
-if final_score <= 2:
-    st.success("✅ **Great day to go outside!** Pollen levels are low for your allergies.")
-elif final_score <= 4:
-    st.success("🟡 **Generally safe to go outside.** Take your medication as a precaution.")
-elif final_score <= 6:
-    st.warning("🟠 **Be cautious today.** Limit outdoor time especially between 6–10am.")
-elif final_score <= 8:
-    st.error("🔴 **High risk today.** Limit outdoor activities and shower after being outside.")
-else:
-    st.error("🟣 **Stay inside if possible.** Very high risk for your allergy profile today.")
-
-# Best time to go out
-col_r1, col_r2 = st.columns(2)
-with col_r1:
-    if isinstance(rain, (int, float)) and rain > 0:
-        st.info("⏰ **Best time:** Right now! Rain is washing pollen out of the air.")
-    else:
-        st.info("⏰ **Best time to go outside:** Afternoon (2–6pm) or after rainfall.\n\n⚠️ **Avoid:** 6–10am — peak pollen dispersal time.")
-
-with col_r2:
-    # Medication reminder
-    if medication == "No medication":
-        if final_score >= 5:
-            st.warning("💊 Consider speaking to a doctor about antihistamines like Cetirizine or Loratadine.")
-        else:
-            st.success("✅ No medication needed today based on your risk level.")
-    elif "Antihistamines" in medication:
-        st.success("💊 **Take your antihistamine by 7am** — 2 hours before peak pollen time (6–10am).")
-    elif medication == "Nasal spray":
-        st.success("🌿 **Use your nasal spray this morning** — 30 minutes before going outside.")
-    elif medication == "Both antihistamines + nasal spray":
-        st.success("💊🌿 **Antihistamine by 7am** + **nasal spray by 8:30am** for best protection.")
-
-st.divider()
-
-# ── Section 5: Best Day This Week ─────────────────────────────────────────────
-st.subheader("📅 Best Day to Go Outside This Week")
-
-df["date"] = df["time"].dt.date
-daily_scores = []
-for d in sorted(df["date"].unique()):
-    day_data = df[df["date"] == d]
-    day_vals = {}
-    for pollen in selected_pollens:
-        api_key = POLLEN_PARAMS[pollen]["api"]
-        if api_key in day_data.columns:
-            peak = pd.to_numeric(day_data[api_key], errors="coerce").max()
-            day_vals[pollen] = float(peak) if not np.isnan(peak) else 0.0
-        else:
-            day_vals[pollen] = 0.0
-    day_levels = {
-        p: get_level(day_vals[p], THRESHOLDS[p], sensitivity_mult(sensitivities.get(p, "Medium")))
-        for p in selected_pollens
-    }
-    day_raw_scores = [level_scores[day_levels[p]] for p in selected_pollens]
-    day_worst = max(day_raw_scores)
-    day_others = sorted(day_raw_scores, reverse=True)[1:]
-    day_score = min(day_worst + sum(s * 0.2 for s in day_others), 10.0)
-    daily_scores.append({
-        "date": d,
-        "label": pd.Timestamp(d).strftime("%A %d %b"),
-        "score": round(day_score, 1),
-    })
-
-best_day = min(daily_scores, key=lambda x: x["score"])
-worst_day = max(daily_scores, key=lambda x: x["score"])
-
-col_best, col_worst = st.columns(2)
-with col_best:
-    st.success(
-        f"**✅ Best day: {best_day['label']}**\n\n"
-        f"Risk score: {best_day['score']}/10\n\n"
-        f"Great day for outdoor activities!"
-    )
-with col_worst:
-    st.error(
-        f"**⚠️ Worst day: {worst_day['label']}**\n\n"
-        f"Risk score: {worst_day['score']}/10\n\n"
-        f"Try to stay indoors if possible."
-    )
-
-st.divider()
-
-# ── Section 6: Switzerland Pollen Map ─────────────────────────────────────────
+# ── Section 3: Switzerland Pollen Map ─────────────────────────────────────────
 st.subheader("🗺️ Switzerland Pollen Map")
 
 @st.cache_data(ttl=3600)
@@ -612,7 +449,7 @@ st_folium(
 
 st.divider()
 
-# ── Section 7: 5-Day Pollen Forecast ──────────────────────────────────────────
+# ── Section 4: 5-Day Pollen Forecast ──────────────────────────────────────────
 st.subheader("📈 5-Day Pollen Forecast")
 
 fig = go.Figure()
@@ -655,7 +492,7 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 
-# ── Section 8: Nearby Pharmacies & Doctors ────────────────────────────────────
+# ── Section 5: Nearby Pharmacies & Doctors ────────────────────────────────────
 st.subheader("💊 Nearby Pharmacies & Doctors")
 st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}")
 
@@ -681,4 +518,4 @@ if show_list:
 st.divider()
 
 # ── Footer ─────────────────────────────────────────────────────────────────────
-st.caption("🌿 BlessYou · Pollen: Open-Meteo · Weather: Open-Meteo · Places: OpenStreetMap · Location: ipapi.co")
+st.caption("🌿 BlessYou · Pollen data: Open-Meteo Air Quality API · Weather: Open-Meteo · Places: OpenStreetMap")
