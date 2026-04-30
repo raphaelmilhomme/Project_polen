@@ -1,8 +1,6 @@
 import streamlit as st
 from datetime import datetime
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from profile import init_profile, get_profile, profile_banner
+from user_profile import init_profile, get_profile, profile_banner
 
 st.set_page_config(page_title="Community", page_icon="🤝", layout="wide")
 
@@ -12,11 +10,11 @@ p = get_profile()
 # ── Initialize session state ───────────────────────────────────────────────────
 if "community_tips" not in st.session_state:
     st.session_state.community_tips = [
-        {"city": "Zürich",  "date": "28 Apr", "tip": "Wearing sunglasses helps protect your eyes from pollen! 😎",             "votes": 12, "badge": "🔴 High Risk Day", "pollens": "Birch, Grass"},
-        {"city": "Bern",    "date": "28 Apr", "tip": "Showering after being outside removes pollen from hair and skin!",        "votes": 8,  "badge": "🟡 Low Risk Day",  "pollens": "Grass"},
-        {"city": "Geneva",  "date": "28 Apr", "tip": "Keep windows closed between 6-10am when pollen is highest.",             "votes": 15, "badge": "🟠 Caution Day",   "pollens": "Birch"},
-        {"city": "Zürich",  "date": "28 Apr", "tip": "Local tip: avoid Zürichsee promenade on windy days — very high birch!",  "votes": 6,  "badge": "🔴 High Risk Day", "pollens": "Birch"},
-        {"city": "Basel",   "date": "28 Apr", "tip": "Rinsing your nose with saline spray after being outside really helps!",  "votes": 9,  "badge": "🟢 Safe Day",      "pollens": "Mugwort"},
+        {"city": "Zürich",  "date": "28 Apr", "tip": "Wearing sunglasses helps protect your eyes from pollen! 😎",            "votes": 12, "badge": "🔴 High Risk Day", "pollens": "Birch, Grass"},
+        {"city": "Bern",    "date": "28 Apr", "tip": "Showering after being outside removes pollen from hair and skin!",       "votes": 8,  "badge": "🟡 Low Risk Day",  "pollens": "Grass"},
+        {"city": "Geneva",  "date": "28 Apr", "tip": "Keep windows closed between 6-10am when pollen is highest.",            "votes": 15, "badge": "🟠 Caution Day",   "pollens": "Birch"},
+        {"city": "Zürich",  "date": "28 Apr", "tip": "Local tip: avoid Zürichsee promenade on windy days — very high birch!", "votes": 6,  "badge": "🔴 High Risk Day", "pollens": "Birch"},
+        {"city": "Basel",   "date": "28 Apr", "tip": "Rinsing your nose with saline spray after being outside really helps!", "votes": 9,  "badge": "🟢 Safe Day",      "pollens": "Mugwort"},
     ]
 
 if "community_reports" not in st.session_state:
@@ -50,22 +48,19 @@ st.title("🤝 BlessYou Community")
 st.markdown("### Connect with other allergy sufferers across Switzerland!")
 st.divider()
 
-# ── Profile banner ─────────────────────────────────────────────────────────────
 profile_banner()
 st.divider()
 
-# ── Prompt to set up profile if not done ──────────────────────────────────────
-user_badge   = p["risk_badge"] or "Unknown"
-user_pollens = ", ".join(p["pollens"]) if p["pollens"] else "Unknown"
+user_badge    = p["risk_badge"] or "Unknown"
+user_pollens  = ", ".join(p["pollens"]) if p["pollens"] else "Unknown"
 profile_ready = p["setup_done"]
 
-# ── City selector — pre-filled from profile ───────────────────────────────────
+# ── City selector ──────────────────────────────────────────────────────────────
 STATIONS = ["Zürich", "Bern", "Basel", "Geneva", "Lausanne", "Luzern",
             "St. Gallen", "Lugano", "Sion", "Davos"]
 
 default_city_idx = STATIONS.index(p["city"]) if p["city"] in STATIONS else 0
-selected_city = st.selectbox("📍 Your city", options=STATIONS, index=default_city_idx)
-
+selected_city    = st.selectbox("📍 Your city", options=STATIONS, index=default_city_idx)
 st.divider()
 
 # ── Section 1: Today's Community Report ───────────────────────────────────────
@@ -125,18 +120,18 @@ st.divider()
 st.subheader("💡 Community Tips")
 st.caption("Share and discover tips from allergy sufferers across Switzerland!")
 
-show_all = st.toggle("Show tips from all cities", value=False)
+show_all      = st.toggle("Show tips from all cities", value=False)
 filtered_tips = (
     st.session_state.community_tips if show_all
     else [t for t in st.session_state.community_tips if t["city"] == selected_city]
 )
-if not filtered_tips:
+if not filtered_tips and not show_all:
     st.info(f"No tips yet for {selected_city} — be the first to share!")
 
 for i, tip in enumerate(filtered_tips):
     col_tip, col_vote = st.columns([4, 1])
     with col_tip:
-        badge_str   = f" · {tip['badge']}"   if tip.get("badge")   else ""
+        badge_str   = f" · {tip['badge']}"      if tip.get("badge")   else ""
         pollens_str = f" · 🌿 {tip['pollens']}" if tip.get("pollens") else ""
         st.markdown(f"💬 **{tip['city']}** · {tip['date']}{badge_str}{pollens_str}")
         st.markdown(f"{tip['tip']}")
@@ -153,7 +148,7 @@ for i, tip in enumerate(filtered_tips):
 
 st.markdown("**Share your own tip!**")
 with st.form("tip_form"):
-    new_tip = st.text_input(f"Your tip for {selected_city}:")
+    new_tip   = st.text_input(f"Your tip for {selected_city}:")
     submitted = st.form_submit_button("Share tip 💬", use_container_width=True)
     if submitted and new_tip:
         st.session_state.community_tips.append({
@@ -222,7 +217,7 @@ for comment in st.session_state.weekly_discussion[-10:]:
     )
 
 with st.form("discussion_form"):
-    new_comment = st.text_input("Share your answer:")
+    new_comment      = st.text_input("Share your answer:")
     submitted_comment = st.form_submit_button("Post comment 💬", use_container_width=True)
     if submitted_comment and new_comment:
         st.session_state.weekly_discussion.append({

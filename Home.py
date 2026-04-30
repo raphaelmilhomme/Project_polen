@@ -7,9 +7,7 @@ from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import plotly.graph_objects as go
 from datetime import datetime
-import sys, os
-sys.path.insert(0, os.path.dirname(__file__))
-from profile import (
+from user_profile import (
     init_profile, get_profile, set_profile, profile_banner,
     STATIONS, POLLEN_PARAMS, THRESHOLDS, LEVEL_ORDER,
     sensitivity_mult, get_level, level_color, level_emoji,
@@ -115,7 +113,6 @@ with st.sidebar:
     st.caption("Swiss Pollen Forecast")
     st.divider()
 
-    # Pre-fill from profile if setup done
     selected_pollens = st.multiselect(
         "Your pollen allergies",
         options=list(POLLEN_PARAMS.keys()),
@@ -142,7 +139,6 @@ with st.sidebar:
         index=default_index,
     )
 
-    # Sync sidebar choices back to profile
     set_profile({
         "city": selected_city,
         "pollens": selected_pollens,
@@ -163,7 +159,6 @@ with col_meta:
     city_info = STATIONS.get(selected_city, {})
     st.metric(label="📍 Location", value=selected_city, delta=f"Canton {city_info.get('canton', '')}")
 
-# ── Profile banner ─────────────────────────────────────────────────────────────
 st.divider()
 profile_banner()
 st.divider()
@@ -203,18 +198,17 @@ with st.spinner("Loading weather data..."):
 
 with st.spinner("Loading pharmacies and doctors..."):
     pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
-    doctors = fetch_places_osm(home["lat"], home["lon"], "doctors")
+    doctors    = fetch_places_osm(home["lat"], home["lon"], "doctors")
 
 # ── Section 1: Today's Pollen Levels ──────────────────────────────────────────
 st.subheader("🌿 Today's Pollen Levels")
 
-# If risk score is set, show link to risk page
 if get_profile()["risk_score"] is not None:
     score = get_profile()["risk_score"]
     badge = get_profile()["risk_badge"]
     st.success(
         f"🎯 Your personal risk score today is **{score}/10** — **{badge}**. "
-        f"Go to the **🎯 Risk Score** page for your full personalised breakdown!"
+        f"Go to the **🎯 Personalized Risk Score** page for your full breakdown!"
     )
 
 cols = st.columns(len(selected_pollens))
@@ -258,7 +252,7 @@ if weather:
     elif isinstance(humidity, (int, float)) and humidity < 40:
         st.warning(f"☀️ Low humidity today ({humidity}%) — dry air means pollen stays airborne longer.")
     elif isinstance(humidity, (int, float)) and humidity > 70:
-        st.info(f"💧 High humidity today ({humidity}%) — pollen tends to clump and fall. Slightly better conditions!")
+        st.info(f"💧 High humidity today ({humidity}%) — pollen tends to clump and fall. Slightly better!")
     else:
         st.info("🌤️ Normal weather conditions today — no special weather impact on pollen levels.")
 else:
@@ -347,11 +341,11 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
         icon=folium.Icon(color="green", icon="home", prefix="fa"),
     ).add_to(m)
 
-    for p_ in pharmacies:
+    for ph in pharmacies:
         folium.Marker(
-            [p_["lat"], p_["lon"]],
-            tooltip=p_["name"],
-            popup=folium.Popup(f"<b>💊 {p_['name']}</b><br>📍 {p_['address']}", max_width=200),
+            [ph["lat"], ph["lon"]],
+            tooltip=ph["name"],
+            popup=folium.Popup(f"<b>💊 {ph['name']}</b><br>📍 {ph['address']}", max_width=200),
             icon=folium.Icon(color="red", icon="plus", prefix="fa"),
         ).add_to(m)
 
@@ -392,7 +386,7 @@ for pollen in selected_pollens:
     if api_key not in df.columns:
         continue
     vals = pd.to_numeric(df[api_key], errors="coerce").clip(lower=0)
-    clr = POLLEN_PARAMS[pollen]["color"]
+    clr  = POLLEN_PARAMS[pollen]["color"]
     r, g, b = int(clr[1:3], 16), int(clr[3:5], 16), int(clr[5:7], 16)
     fig.add_trace(go.Scatter(
         x=df["time"], y=vals, name=pollen,
@@ -448,4 +442,4 @@ if show_list:
             st.info("No doctors found nearby.")
 
 st.divider()
-st.caption("🌿 BlessYou · Pollen data: Open-Meteo Air Quality API · Weather: Open-Meteo · Places: OpenStreetMap")
+st.caption("🌿 BlessYou · Pollen: Open-Meteo · Weather: Open-Meteo · Places: OpenStreetMap")

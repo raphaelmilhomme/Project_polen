@@ -1,4 +1,4 @@
-# profile.py — shared across all pages via st.session_state
+# user_profile.py — shared across all pages via st.session_state
 
 import streamlit as st
 
@@ -48,12 +48,10 @@ DEFAULT_PROFILE = {
     "hours_outside": 2,
     "risk_score": None,
     "risk_badge": None,
-    "risk_badge_color": None,
     "setup_done": False,
 }
 
 def init_profile():
-    """Call at the top of every page to ensure profile exists."""
     if "profile" not in st.session_state:
         st.session_state["profile"] = DEFAULT_PROFILE.copy()
 
@@ -66,22 +64,17 @@ def set_profile(updates: dict):
     st.session_state["profile"].update(updates)
 
 def profile_banner():
-    """
-    Shows a small top banner on any page if profile is set up.
-    Shows a prompt to set up profile if not.
-    """
     p = get_profile()
     if not p["setup_done"]:
         st.info(
             "👤 **You haven't set up your profile yet!** "
-            "Go to the **🎯 Risk Score** page to enter your allergies and get a personalised experience across all pages."
+            "Go to the **🎯 Personalized Risk Score** page to enter your allergies "
+            "and get a personalised experience across all pages."
         )
         return
-
     pollens_str = ", ".join(p["pollens"]) if p["pollens"] else "None"
     score = p["risk_score"]
     badge = p["risk_badge"] or "Not calculated yet"
-
     cols = st.columns([2, 2, 2, 2])
     with cols[0]:
         st.caption("📍 Your city")

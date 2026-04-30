@@ -3,11 +3,9 @@ import requests
 import numpy as np
 import pandas as pd
 from datetime import datetime
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from profile import (
+from user_profile import (
     init_profile, get_profile, set_profile, profile_banner,
-    STATIONS, POLLEN_PARAMS, THRESHOLDS, LEVEL_ORDER,
+    STATIONS, POLLEN_PARAMS, THRESHOLDS,
     sensitivity_mult, get_level,
 )
 
@@ -15,8 +13,8 @@ st.set_page_config(page_title="Personalized Risk Score", page_icon="🎯", layou
 
 init_profile()
 
-POLLEN_API = {k: v["api"] for k, v in POLLEN_PARAMS.items()}
-level_scores = {"none": 0, "low": 2, "moderate": 5, "high": 7, "very high": 10}
+POLLEN_API    = {k: v["api"] for k, v in POLLEN_PARAMS.items()}
+level_scores  = {"none": 0, "low": 2, "moderate": 5, "high": 7, "very high": 10}
 
 # ── API Functions ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
@@ -52,6 +50,8 @@ def fetch_weather(lat, lon):
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.title("🎯 Your Personalized Risk Score")
 st.caption("Fill in your profile once — it will be remembered across all pages of BlessYou.")
+st.divider()
+profile_banner()
 st.divider()
 
 # ── Section 1: Personal Profile ───────────────────────────────────────────────
@@ -112,23 +112,23 @@ if not selected_pollens:
     st.stop()
 
 # ── Fetch live data ────────────────────────────────────────────────────────────
-home = STATIONS[selected_city]
+home        = STATIONS[selected_city]
 pollen_vars = list({POLLEN_API[p_] for p_ in selected_pollens})
 
 with st.spinner("Fetching live pollen and weather data..."):
-    hourly = fetch_pollen_forecast(home["lat"], home["lon"], pollen_vars)
+    hourly  = fetch_pollen_forecast(home["lat"], home["lon"], pollen_vars)
     weather = fetch_weather(home["lat"], home["lon"])
 
 if not hourly:
     st.error("❌ Could not load pollen data. Check your connection.")
     st.stop()
 
-df = pd.DataFrame(hourly)
+df       = pd.DataFrame(hourly)
 df["time"] = pd.to_datetime(df["time"])
-today = datetime.now().date()
+today    = datetime.now().date()
 today_df = df[df["time"].dt.date == today]
 
-mult = sensitivity_mult(sensitivity)
+mult       = sensitivity_mult(sensitivity)
 today_vals = {}
 for pollen in selected_pollens:
     api_key = POLLEN_API[pollen]
@@ -144,14 +144,14 @@ pollen_levels = {
 }
 
 # ── Score calculation ──────────────────────────────────────────────────────────
-raw_scores = [level_scores[pollen_levels[p_]] for p_ in selected_pollens]
-worst_raw = max(raw_scores)
+raw_scores   = [level_scores[pollen_levels[p_]] for p_ in selected_pollens]
+worst_raw    = max(raw_scores)
 other_scores = sorted(raw_scores, reverse=True)[1:]
-additional = sum(s * 0.2 for s in other_scores)
-avg_raw = min(worst_raw + additional, 10.0)
+additional   = sum(s * 0.2 for s in other_scores)
+avg_raw      = min(worst_raw + additional, 10.0)
 
-age_factor = 1.2 if age_group in ["Under 12", "Over 65"] else 1.0
-asthma_factor = 1.3 if has_asthma == "Yes" else 1.0
+age_factor        = 1.2 if age_group in ["Under 12", "Over 65"] else 1.0
+asthma_factor     = 1.3 if has_asthma == "Yes" else 1.0
 medication_factor = {
     "No medication": 1.0,
     "Antihistamines (e.g. Cetirizine)": 0.7,
@@ -162,45 +162,36 @@ exposure_factor = 1 + (hours_outside * 0.05)
 
 weather_factor = 1.0
 if weather:
-    wind = weather.get("wind_speed_10m", 0)
-    rain = weather.get("precipitation", 0)
+    wind     = weather.get("wind_speed_10m", 0)
+    rain     = weather.get("precipitation", 0)
     humidity = weather.get("relative_humidity_2m", 50)
-    if isinstance(wind, (int, float)) and wind > 20:
-        weather_factor += 0.2
-    if isinstance(rain, (int, float)) and rain > 0:
-        weather_factor -= 0.2
-    if isinstance(humidity, (int, float)) and humidity < 40:
-        weather_factor += 0.1
+    if isinstance(wind,     (int, float)) and wind     > 20: weather_factor += 0.2
+    if isinstance(rain,     (int, float)) and rain     > 0:  weather_factor -= 0.2
+    if isinstance(humidity, (int, float)) and humidity < 40: weather_factor += 0.1
 
 final_score = min(round(
     avg_raw * age_factor * asthma_factor * medication_factor
     * exposure_factor * weather_factor, 1
 ), 10.0)
 
-# Badge
-if final_score <= 2:
-    badge, color = "🟢 Safe Day", "success"
-elif final_score <= 4:
-    badge, color = "🟡 Low Risk Day", "success"
-elif final_score <= 6:
-    badge, color = "🟠 Caution Day", "warning"
-elif final_score <= 8:
-    badge, color = "🔴 High Risk Day", "error"
-else:
-    badge, color = "🟣 Stay Inside Day", "error"
+if final_score <= 2:   badge, color = "🟢 Safe Day",        "success"
+elif final_score <= 4: badge, color = "🟡 Low Risk Day",    "success"
+elif final_score <= 6: badge, color = "🟠 Caution Day",     "warning"
+elif final_score <= 8: badge, color = "🔴 High Risk Day",   "error"
+else:                  badge, color = "🟣 Stay Inside Day", "error"
 
-# ── Save full profile to session state ────────────────────────────────────────
+# ── Save full profile ──────────────────────────────────────────────────────────
 set_profile({
-    "city": selected_city,
-    "pollens": selected_pollens,
+    "city":          selected_city,
+    "pollens":       selected_pollens,
     "sensitivities": {p_: sensitivity for p_ in selected_pollens},
-    "age_group": age_group,
-    "asthma": has_asthma,
-    "medication": medication,
+    "age_group":     age_group,
+    "asthma":        has_asthma,
+    "medication":    medication,
     "hours_outside": hours_outside,
-    "risk_score": final_score,
-    "risk_badge": badge,
-    "setup_done": True,
+    "risk_score":    final_score,
+    "risk_badge":    badge,
+    "setup_done":    True,
 })
 
 # ── Section 2: Risk Score ──────────────────────────────────────────────────────
@@ -227,14 +218,13 @@ with col_explain:
         f"- Age factor: **{'Yes' if age_group in ['Under 12', 'Over 65'] else 'No'}**"
     )
 
-st.success("✅ Your profile has been saved! Your city, allergies and risk score are now visible across all BlessYou pages.")
-
+st.success("✅ Your profile is saved and visible across all BlessYou pages!")
 st.divider()
 
 # ── Section 3: Best Day This Week ─────────────────────────────────────────────
 st.subheader("📅 Best Day to Go Outside This Week")
 
-df["date"] = df["time"].dt.date
+df["date"]   = df["time"].dt.date
 daily_scores = []
 for d in sorted(df["date"].unique()):
     day_data = df[df["date"] == d]
@@ -247,11 +237,11 @@ for d in sorted(df["date"].unique()):
         else:
             day_vals[pollen] = 0.0
     day_levels = {p_: get_level(day_vals[p_], THRESHOLDS[p_], mult) for p_ in selected_pollens}
-    day_raw = sum([level_scores[day_levels[p_]] for p_ in selected_pollens]) / len(selected_pollens)
+    day_raw    = sum([level_scores[day_levels[p_]] for p_ in selected_pollens]) / len(selected_pollens)
     daily_scores.append({
-        "date": d,
-        "label": pd.Timestamp(d).strftime("%A %d %b"),
-        "score": round(day_raw, 1),
+        "date":   d,
+        "label":  pd.Timestamp(d).strftime("%A %d %b"),
+        "score":  round(day_raw, 1),
         "levels": day_levels,
     })
 
@@ -279,10 +269,7 @@ st.subheader("💊 Medication & Timing Advice")
 
 if medication == "No medication":
     if final_score >= 5:
-        st.warning(
-            "⚠️ Your risk score is high. Consider speaking to a doctor about "
-            "antihistamines like Cetirizine or Loratadine."
-        )
+        st.warning("⚠️ Your risk score is high. Consider speaking to a doctor about antihistamines like Cetirizine or Loratadine.")
     else:
         st.success("✅ No medication needed today based on your risk level.")
 elif "Antihistamines" in medication:
@@ -297,7 +284,7 @@ elif medication == "Nasal spray":
         "🌿 **Nasal spray reminder:**\n\n"
         "Use your nasal spray **every morning** before going outside.\n\n"
         "For best effect, use it **30 minutes** before exposure.\n\n"
-        "✅ Nasal sprays reduce inflammation and are most effective used consistently."
+        "✅ Nasal sprays are most effective used consistently."
     )
 elif medication == "Both antihistamines + nasal spray":
     st.success(
