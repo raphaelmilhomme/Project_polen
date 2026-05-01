@@ -38,6 +38,7 @@ Project description:
         -Then you can look at various tips from other users for your selected location or in Switzerland as a whole.
         -You can also enter your own tips which will appear for all users.
         -The "Pollen Sightings" section enables you to report your personal experience as to what pollen you saw when going out.
+        -Finally the Weekly discussion enables you to add other comments, tips or to discuss with random users. Each comment is posted with your allergies, as well as the risk rate for the day in which you posted the comment.
 
 READ ME Plant Identifier:
 1. Goals:
