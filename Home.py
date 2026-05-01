@@ -73,6 +73,7 @@ def fetch_weather(lat, lon):
         return r.json().get("current", None)
     except:
         return None
+#gets current weather conditions such as temperature, humidity rain and wind from Open Meteo Weather API for the selected location, data is saved for 1 hour (ttl=3600)
 
 @st.cache_data(ttl=86400)
 def fetch_places_osm(lat, lon, amenity):
@@ -110,6 +111,7 @@ def fetch_places_osm(lat, lon, amenity):
         return places[:8]
     except Exception as e:
         return []
+#finds nearby pharmacies or doctors within 5km of selected location by using the OpenStreetMap Overpass API, result is stored for ttl=86400 so 24h because phramacies and doctors don't move + there is a limit for this API's usage
 
 def is_in_season(pollen):
     month   = datetime.now().month
@@ -121,19 +123,20 @@ def is_in_season(pollen):
         "Alder":   [2, 3, 4],
     }
     return month in seasons.get(pollen, [])
+#looks if the pollens are in season by using our indicative seasons for each pollen
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("🌿 BlessYou")
     st.caption("Swiss Pollen Forecast")
     st.divider()
-
+#initializes sidebar where the user can enter their allergies
     selected_pollens = st.multiselect(
         "Your pollen allergies",
         options=list(POLLEN_PARAMS.keys()),
         default=p["pollens"] if p["pollens"] else ["Birch", "Grass"],
     )
-
+#enables you to select the pollen to which you are allergic, by default, Birch and Grass are selected
     st.markdown("**🎚️ Your sensitivity per pollen:**")
     sensitivities = {}
     for pollen in selected_pollens:
@@ -143,13 +146,13 @@ with st.sidebar:
             value=p["sensitivities"].get(pollen, "Medium"),
             key=f"sens_{pollen}"
         )
-
+#enables you to enter the level of sensitivity for each pollen you selected as being allergic to
     city_list   = list(STATIONS.keys())
     saved_city  = p["city"] if p["city"] in city_list else detect_city()
     default_idx = city_list.index(saved_city)
 
     selected_city = st.selectbox("📍 Your location", options=city_list, index=default_idx)
-
+#tries to find your city with your IP adress and enables you to correct it thanks to a dropdown 
     st.divider()
     st.markdown("**👤 Your profile**")
 
