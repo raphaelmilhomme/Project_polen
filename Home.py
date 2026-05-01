@@ -111,7 +111,7 @@ def fetch_places_osm(lat, lon, amenity):
         return places[:8]
     except Exception as e:
         return []
-#finds nearby pharmacies or doctors within 5km of selected location by using the OpenStreetMap Overpass API, result is stored for ttl=86400 so 24h because phramacies and doctors don't move + there is a limit for this API's usage
+#finds nearby pharmacies or doctors within 5km of selected location by using the OpenStreetMap Overpass API, result is stored for ttl=86400 so 24h because pharmacies and doctors don't move + there is a limit for this API's usage
 
 def is_in_season(pollen):
     month   = datetime.now().month
@@ -325,7 +325,7 @@ if weather:
         "Both antihistamines + nasal spray": 0.5,
     }[medication]
     exposure_factor = 1 + (hours_outside * 0.05)
-#if selected, factors that multiply the original score (age and asthma increase it while medication reduces it, time outisde adds 5% per hour)
+#if selected, factors that multiply the original score (age and asthma increase it while medication reduces it, time outside adds 5% per hour)
 
     weather_factor = 1.0
     if isinstance(wind,     (int, float)) and wind     > 20: weather_factor += 0.2
@@ -347,7 +347,7 @@ if weather:
 #Assigns a color based on the final score calculated above
 
     set_profile({"risk_score": final_score, "risk_badge": badge})
-#saves risk score and badge so later, when you will post on community page, these elements can be diplayed
+#saves risk score and badge so later, when you will post on community page, these elements can be displayed
 
     col_score, col_badge, col_explain = st.columns([1, 1, 2])
     with col_score:
@@ -564,14 +564,14 @@ for pollen in selected_pollens:
 
 fig.add_vline(x=datetime.now().timestamp() * 1000, line_dash="dash", line_color="#adb5bd",
               annotation_text="Now", annotation_position="top right")
-#adds a vertical dashed line at the current time so users can see where they are in th chart
+#adds a vertical dashed line at the current time so users can see where they are in the chart
 
 t = THRESHOLDS[selected_pollens[0]]
 fig.add_hrect(y0=0,    y1=t[0], fillcolor="green",  opacity=0.03, line_width=0)
 fig.add_hrect(y0=t[0], y1=t[1], fillcolor="green",  opacity=0.05, line_width=0)
 fig.add_hrect(y0=t[1], y1=t[2], fillcolor="orange", opacity=0.05, line_width=0)
 fig.add_hrect(y0=t[2], y1=t[3], fillcolor="red",    opacity=0.05, line_width=0)
-#adds horiozontal bands of colored background to show the areas with low, moderate, high and very high pollen levels/ risk
+#adds horizontal bands of colored background to show the areas with low, moderate, high and very high pollen levels/ risk
 
 fig.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
