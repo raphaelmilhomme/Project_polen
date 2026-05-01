@@ -18,7 +18,7 @@ STATIONS = {
     "Chur":       {"canton": "GR", "lat": 46.852, "lon": 9.533},
     "Frauenfeld": {"canton": "TG", "lat": 47.556, "lon": 8.898},
     "Bellinzona": {"canton": "TI", "lat": 46.193, "lon": 9.023},}
-#dictionarry of the 15 swiss cities analyzed on this website/ that can be selected
+#dictionary of the 15 swiss cities analyzed on this website/ that can be selected
 
 POLLEN_PARAMS = {
     "Birch":   {"api": "birch_pollen",   "color": "#C4532A", "season": "Mar–May"},
@@ -34,8 +34,10 @@ THRESHOLDS = {
     "Mugwort": [1,  5,  20,  80],
     "Hazel":   [1, 10,  50, 150],
     "Alder":   [1, 10,  50, 150]}
+#Pollen levels in grains per m3 for each pollen (none to low, low to moderate, moterate to high, high to very high)
+
 LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
-#Pollen levels in grains per m3 for each pollen, associated with the corresponding level names
+#list of severity levels used to compare pollen levels
 
 DEFAULT_PROFILE = {
     "city":          "Zürich",
