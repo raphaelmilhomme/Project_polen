@@ -40,8 +40,8 @@ LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
 
 DEFAULT_PROFILE = {
     "city": "Zürich",
-    "pollens": ["Birch", "Grass"],
-    "sensitivities": {"Birch": "Medium", "Grass": "Medium"},
+    "pollens": [],
+    "sensitivities": {},
     "age_group": "12–65",
     "asthma": "No",
     "medication": "No medication",
@@ -49,6 +49,7 @@ DEFAULT_PROFILE = {
     "risk_score": None,
     "risk_badge": None,
     "setup_done": False,
+    "quiz_done": False,
 }
 
 def init_profile():
@@ -65,16 +66,15 @@ def set_profile(updates: dict):
 
 def profile_banner():
     p = get_profile()
-    if not p["setup_done"]:
+    if not p["setup_done"] and not p["quiz_done"]:
         st.info(
-            "👤 **You haven't set up your profile yet!** "
-            "Go to the **🎯 Personalized Risk Score** page to enter your allergies "
-            "and get a personalised experience across all pages."
+            "👤 **Your profile is not set up yet!** "
+            "Answer the **🌿 Allergy Quiz** to discover your allergies, "
+            "or visit the **🏠 Home** page to set up your profile manually."
         )
         return
-    pollens_str = ", ".join(p["pollens"]) if p["pollens"] else "None"
-    score = p["risk_score"]
-    badge = p["risk_badge"] or "Not calculated yet"
+    pollens_str = ", ".join(p["pollens"]) if p["pollens"] else "None selected"
+    badge       = p["risk_badge"] or "Not calculated yet"
     cols = st.columns([2, 2, 2, 2])
     with cols[0]:
         st.caption("📍 Your city")
