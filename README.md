@@ -1,10 +1,28 @@
 This is the description of the project of the Group number 12.09
-We installed these libraries...
+
+Prerequisites:
+-Python 3.11
+-All required libraries are listed in requirements.txt
+    -streamlit: the web app framework that turns python code into a visualised web app with buttons, sliders, charts
+    -pandas: converts the data from the Open-Meteo API into a table to enable us to filter it by date, find peak pollen values and compute the best or worst day of the week
+    -requests: calls data from external APIs: hourly pollen data and weather from Open-Meteo, find nearby pharmacies and doctors from OpenStreetMap API, detects the user's city by looking at their IP adress
+    -numpy: handles missing pollen values by naming them NaN and removing those empty slots before doing calculations
+    -folium + streamlit-folium: used to build the interactive Switzerland map with the "heated" dots around cities depending on the amounts of pollen, as well as the pharmacy and doctor pins. Streamlit-folium is used to show the map inside streamlit as this isn't a built in function
+    -plotly: used to plot graphs, here it is the 5-day pollen forecast with one bar per selected pollen
+    -onxruntime: loads and runs the plant identification machine learning model
+    -pillow: opens plant photos, converts them into RGB file format with 300x 300 pixels before feeding them to the ML model
+    -supabase: connecting the Community page to the database so we can save the comments, pollen sightings, tips...
+
+-You can install them all at once with the command: pip install -r requirements.txt
+
+
 
 
 
 
 READ ME Home:
+1. Goals:
+- Offer a real time pollen forecast web app built for people who suffer of pollen allergies in Switzerland, principally in cities
 
 
 
@@ -58,6 +76,3 @@ iV. Low: Norway Spruce (Picea abies), Small Leaved Lime (Tilia cordata)
 - Min 100 photos per species required
 - See training/blessyou_final_training.py for full code
 
-8. How to run
-- pip install -r requirements.txt
-- streamlit run app.py
