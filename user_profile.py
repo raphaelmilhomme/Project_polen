@@ -49,18 +49,22 @@ DEFAULT_PROFILE = {
     "risk_badge":    None,
     "setup_done":    False,
     "quiz_done":     False}
+#default user profile values for a new user who hasn't entered any information in their profile yet
 
 def init_profile():
     if "profile" not in st.session_state:
         st.session_state["profile"] = DEFAULT_PROFILE.copy()
+#creates the profile if it doesn't already exist
 
 def get_profile():
     init_profile()
     return st.session_state["profile"]
+#returns the current profile from the session state
 
 def set_profile(updates: dict):
     init_profile()
     st.session_state["profile"].update(updates)
+#updates specific fields in the profile without overwriting all the rest
 
 def profile_banner():
     p = get_profile()
@@ -68,8 +72,7 @@ def profile_banner():
         st.info(
             "👤 **Your profile is not set up yet!** "
             "Answer the **🌿 Allergy Quiz** to discover your allergies, "
-            "or visit the **🏠 Home** page to set up your profile manually."
-        )
+            "or visit the **🏠 Home** page to set up your profile manually.")
         return
     pollens_str = ", ".join(p["pollens"]) if p["pollens"] else "None selected"
     badge       = p["risk_badge"] or "Not calculated yet"
@@ -86,9 +89,11 @@ def profile_banner():
     with cols[3]:
         st.caption("💊 Medication")
         st.markdown(f"**{p['medication']}**")
+#creates a banner that can be called in any page with the city, allergies, risk level and medication of the user
 
 def sensitivity_mult(sensitivity):
     return {"Low": 0.5, "Medium": 1.0, "High": 1.5}[sensitivity]
+#converts the sensitivity level into a multiplier that is used to adjust pollen risks
 
 def get_level(value, thresholds, mult=1.0):
     import numpy as np
@@ -100,6 +105,8 @@ def get_level(value, thresholds, mult=1.0):
     elif v < thresholds[2]: return "moderate"
     elif v < thresholds[3]: return "high"
     else:                   return "very high"
+#converts a pollen value into a text (none, low...) based on the user's sensitivity
+
 
 def level_color(level):
     return {
@@ -109,6 +116,7 @@ def level_color(level):
         "high":      "#C4532A",
         "very high": "#5b21b6",
     }.get(level, "#9e9e9e")
+#matches pollen level with corresponding color
 
 def level_emoji(level):
     return {
@@ -118,3 +126,4 @@ def level_emoji(level):
         "high":      "🔴",
         "very high": "🟣",
     }.get(level, "⚪")
+#matches pollen level to its emoji color

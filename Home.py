@@ -208,7 +208,7 @@ with col_meta:
     st.metric(label="📍 Location", value=selected_city, delta=f"Canton {city_info.get('canton', '')}")
 #creates the header with title on the left, the date on the bottom in light gray and location on the right, showing the selected city
 st.divider()
-profile_banner() # shows a summary of the user's selected city, allergies, today's risk and selected medication
+profile_banner() # shows a summary of the user's selected city, allergies, today's risk and selected medication by calling the function banner from user_profile.py
 st.divider()
 
 if not selected_pollens:
