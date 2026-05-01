@@ -57,6 +57,7 @@ def fetch_pollen(lat, lon, pollen_vars):
         return r.json().get("hourly", None)
     except:
         return None
+#gets hourly pollen data from the Open Meteo Air Quality API for the next 5 days. Data is saved for ttl=3600 so 1 hour, not updated at every refresh
 
 @st.cache_data(ttl=3600)
 def fetch_weather(lat, lon):
