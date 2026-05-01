@@ -70,18 +70,31 @@ def fetch_weather(lat, lon):
 
 @st.cache_data(ttl=86400)
 def fetch_places_osm(lat, lon, amenity):
-    url   = "https://overpass-api.de/api/interpreter"
-    query = f"[out:json][timeout:25];(node[amenity={amenity}](around:5000,{lat},{lon});way[amenity={amenity}](around:5000,{lat},{lon}););out body center;"
+    url = "https://overpass-api.de/api/interpreter"
+    query = f"""
+    [out:json][timeout:30];
+    (
+      node[amenity={amenity}](around:5000,{lat},{lon});
+      way[amenity={amenity}](around:5000,{lat},{lon});
+    );
+    out body center;
+    """
     try:
-        r = requests.get(url, params={"data": query}, timeout=25, headers={"User-Agent": "BlessYou-App/1.0"})
+        r = requests.post(
+            url,
+            data={"data": query},
+            timeout=30,
+            headers={"User-Agent": "BlessYou-App/1.0"}
+        )
         r.raise_for_status()
+        elements = r.json().get("elements", [])
         places = []
-        for el in r.json().get("elements", []):
-            tags   = el.get("tags", {})
-            name   = tags.get("name", "Unknown")
+        for el in elements:
+            tags = el.get("tags", {})
+            name = tags.get("name", "Unknown")
             street = tags.get("addr:street", "")
             number = tags.get("addr:housenumber", "")
-            addr   = f"{street} {number}".strip() or "Address not available"
+            addr = f"{street} {number}".strip() or "Address not available"
             if el["type"] == "node":
                 la, lo = el.get("lat"), el.get("lon")
             else:
@@ -90,7 +103,8 @@ def fetch_places_osm(lat, lon, amenity):
             if la and lo:
                 places.append({"name": name, "address": addr, "lat": la, "lon": lo})
         return places[:8]
-    except:
+    except Exception as e:
+        st.warning(f"Could not load {amenity} data: {e}")
         return []
 
 def is_in_season(pollen):
