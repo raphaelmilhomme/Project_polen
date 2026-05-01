@@ -1,5 +1,5 @@
 # user_profile.py — shared across all pages via st.session_state
-
+#contains all the dictionaries, constants and functions used by the other pages
 import streamlit as st
 
 STATIONS = {
@@ -17,26 +17,25 @@ STATIONS = {
     "Aarau":      {"canton": "AG", "lat": 47.392, "lon": 8.044},
     "Chur":       {"canton": "GR", "lat": 46.852, "lon": 9.533},
     "Frauenfeld": {"canton": "TG", "lat": 47.556, "lon": 8.898},
-    "Bellinzona": {"canton": "TI", "lat": 46.193, "lon": 9.023},
-}
+    "Bellinzona": {"canton": "TI", "lat": 46.193, "lon": 9.023},}
+#dictionarry of the 15 swiss cities analyzed on this website/ that can be selected
 
 POLLEN_PARAMS = {
     "Birch":   {"api": "birch_pollen",   "color": "#C4532A", "season": "Mar–May"},
     "Grass":   {"api": "grass_pollen",   "color": "#2d6a4f", "season": "May–Aug"},
     "Mugwort": {"api": "mugwort_pollen", "color": "#7B6FA0", "season": "Jul–Sep"},
     "Hazel":   {"api": "alder_pollen",   "color": "#B8935A", "season": "Jan–Mar"},
-    "Alder":   {"api": "alder_pollen",   "color": "#6B8F6C", "season": "Feb–Apr"},
-}
+    "Alder":   {"api": "alder_pollen",   "color": "#6B8F6C", "season": "Feb–Apr"},}
+#dictionary mapping each pollen to its Open-Meteo API variable name, assigning it a color and season. Note: Hazel and Alder share the same API variable (alder_pollen)
 
 THRESHOLDS = {
     "Birch":   [1, 10,  50, 200],
     "Grass":   [1, 10,  50, 200],
     "Mugwort": [1,  5,  20,  80],
     "Hazel":   [1, 10,  50, 150],
-    "Alder":   [1, 10,  50, 150],
-}
-
+    "Alder":   [1, 10,  50, 150]}
 LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
+#Pollen levels in grains per m3 for each pollen, associated with the corresponding level names
 
 DEFAULT_PROFILE = {
     "city":          "Zürich",
@@ -49,8 +48,7 @@ DEFAULT_PROFILE = {
     "risk_score":    None,
     "risk_badge":    None,
     "setup_done":    False,
-    "quiz_done":     False,
-}
+    "quiz_done":     False}
 
 def init_profile():
     if "profile" not in st.session_state:
