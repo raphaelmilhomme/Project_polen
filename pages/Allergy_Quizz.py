@@ -78,8 +78,6 @@ st.markdown("### Find out which pollens you might be allergic to!")
 st.caption("Answer these questions based on your typical symptoms. This is not a medical diagnosis — always consult a doctor for confirmation.")
 st.divider()
 
-profile_banner()
-st.divider()
 
 # ── If quiz already done, show results and option to redo ──────────────────────
 if p["quiz_done"] and p["pollens"]:
