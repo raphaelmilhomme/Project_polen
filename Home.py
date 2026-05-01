@@ -12,6 +12,7 @@ from user_profile import (
     STATIONS, POLLEN_PARAMS, THRESHOLDS, LEVEL_ORDER,
     sensitivity_mult, get_level, level_color, level_emoji,
 )
+#importing all the necessary libraries and data (for ex from the user profile python file) in order to be able to code the page after
 
 st.set_page_config(
     page_title="BlessYou · Swiss Pollen Forecast",
@@ -19,11 +20,14 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+#setting up the streamlit website with title, logo, layout and sidebar
 
 init_profile()
 p = get_profile()
+#creating/ initializing a user profile and storing it in p for easier access
 
 LEVEL_SCORES = {"none": 0, "low": 2, "moderate": 5, "high": 7, "very high": 10}
+#converts pollen sensitivity into numbers so that we can actually use it in calculations later on
 
 # ── Data fetching ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
@@ -37,6 +41,7 @@ def detect_city():
         return "Zürich"
     except:
         return "Zürich"
+#tries to detect the user's city through their IP adress, if it fails or the city is not in the list, the function returns Zurich by default. ttl=3600 means that this result is saved for an hour
 
 @st.cache_data(ttl=3600)
 def fetch_pollen(lat, lon, pollen_vars):
