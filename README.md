@@ -1,15 +1,5 @@
 This is the description of the project of the Group number 12.09
 
-Short Project description:
--Bless You is a real time pollen forecast web app built for people who suffer of pollen allergies in Switzerland, especially in cities
--the website is built like this:
-    Home Page:
-        -You can enter your pollen allergies on the left with a choice of 5 different ones (Birch Grass, Mugwort, Hazel and Alder)
-        -then you can enter your sensitivity level to each pollen
-        -other informations can be added to your profile such as you location, your age group, whether you have asthma, whether you take medication for your pollen allergies, as well as how long you want to go outside today
-        --> based on all this personnal information, the Open-Meteo Air Quality API and Weather API, as well as the OpenStreetMap API, the website shows you the current pollen levels of the ones you are allergic to and adapts the risk score based on your personal sensitivity and caracteristics. 
-
-
 Prerequisites:
 -Python 3.11
 -All required libraries are listed in requirements.txt
@@ -25,6 +15,16 @@ Prerequisites:
 
 -You can install them all at once with the command: pip install -r requirements.txt
 -Run the app: streamlit run Home.py
+
+Project description:
+-Bless You is a real time pollen forecast web app built for people who suffer of pollen allergies in Switzerland, especially in cities
+-the website is built like this:
+    Home Page:
+        -You can enter your pollen allergies on the left with a choice of 5 different ones (Birch Grass, Mugwort, Hazel and Alder)
+        -then you can enter your sensitivity level to each pollen
+        -other informations can be added to your profile such as you location, your age group, whether you have asthma, whether you take medication for your pollen allergies, as well as how long you want to go outside today
+        --> based on all this personnal information, the Open-Meteo Air Quality API and Weather API, as well as the OpenStreetMap API, the website shows you the current pollen levels of the ones you are allergic to and adapts the risk score based on your personal sensitivity and caracteristics. Then, the weather is shown, since this can have a significant impact on pollen levels. Your Personal Risk score based on all your personal information and daily pollen/ weather data is also shown. Based on this, the app can recommend you to take medications and when it would be better to go outside this week.
+        -The "Switzerland Pollen Map" shows the pollen level in every major swiss city by clicking on the corresponding dots. You can also activate the Pharmacies and Doctors map, showing you their pins on the map in the city where you are located (marked with a small house).
 
 READ ME Plant Identifier:
 1. Goals:
