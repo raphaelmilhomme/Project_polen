@@ -409,22 +409,24 @@ for d in sorted(df["date"].unique()):
     daily_scores.append({
         "date":  d,
         "label": pd.Timestamp(d).strftime("%A %d %b"),
-        "score": round(day_raw, 1),
-    })
+        "score": round(day_raw, 1),})
+#loops through each of the 5 forecast days and computes an average pollen score per day    
 
 best_day  = min(daily_scores, key=lambda x: x["score"])
 worst_day = max(daily_scores, key=lambda x: x["score"])
+#looks for the best and worst days within the 5 day timeperiod
 
 col_best, col_worst = st.columns(2)
 with col_best:
     st.success(f"**✅ Best day: {best_day['label']}**\n\nPollen score: {best_day['score']}/10\n\nGreat day for outdoor activities!")
 with col_worst:
     st.error(f"**⚠️ Worst day: {worst_day['label']}**\n\nPollen score: {worst_day['score']}/10\n\nTry to stay indoors if possible.")
+#show best and worst days calculated above in two boxes with a basic recommendation for each
 
 st.divider()
 
 # ── Section 4: Switzerland Pollen Map ─────────────────────────────────────────
-st.subheader("🗺️ Switzerland Pollen Map")
+st.subheader("🗺️ Switzerland Pollen Map") # section title
 
 @st.cache_data(ttl=3600)
 def fetch_all_stations(pollen_vars):
@@ -444,9 +446,11 @@ def fetch_all_stations(pollen_vars):
                     city_vals[var] = 0.0
             results[city] = city_vals
     return results
+#gets the peak pollen values for all 15 swiss cities in order to show them on the map, data is saved for 1 hour (ttl=3600 seconds)
 
 with st.spinner("Fetching map data…"):
     all_data = fetch_all_stations(tuple(api_vars))
+#runs the fetch_all_stations function and stores the results in all_data
 
 def build_map(weather=None, pharmacies=[], doctors=[]):
     m = folium.Map(
@@ -462,6 +466,7 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
     m.options['minZoom'] = 7
     m.options['maxBounds'] = [[45.5, 5.5], [48.2, 10.8]]
     m.options['maxBoundsViscosity'] = 1.0
+#builds the interactive map of Switzerland, with restricted zoom and limits, to keep user in Switzerland
 
     heat_pts = []
     for city, info in STATIONS.items():
@@ -482,11 +487,12 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
             location=[info["lat"], info["lon"]], radius=13,
             color="white", weight=2, fill=True, fill_color=clr, fill_opacity=0.85,
             popup=folium.Popup(popup_html, max_width=200),
-            tooltip=f"{city}: {worst}",
-        ).add_to(m)
+            tooltip=f"{city}: {worst}",).add_to(m)
+    #loop that goes through all the cities by calculating the worst pollen levels and adding a colored circle marker for every city depending on their respective pollen level
 
     HeatMap(heat_pts, radius=55, blur=40, min_opacity=0.3,
             gradient={"0.0": "#2d6a4f", "0.35": "#B8935A", "0.65": "#C4532A", "1.0": "#5b21b6"}).add_to(m)
+    #adds the heatmap by combining pollen totals per city: color goes from green (low) to purple (very high)
 
     weather_popup = f"<b>📍 {selected_city}</b><br>"
     if weather:
@@ -502,6 +508,7 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
         popup=folium.Popup(weather_popup, max_width=250),
         icon=folium.Icon(color="green", icon="home", prefix="fa"),
     ).add_to(m)
+#Adds a green home pin for the selected city. If someone clicks on the home, current weather info is shown.
 
     for ph in pharmacies:
         folium.Marker(
@@ -516,12 +523,14 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
             icon=folium.Icon(color="blue", icon="user-md", prefix="fa"),
         ).add_to(m)
     return m
+#Adds red markers for pharmacies and blue ones for doctors if the buttons are switched on
 
 col_tog1, col_tog2 = st.columns(2)
 with col_tog1:
     show_pharmacies = st.toggle("💊 Show pharmacies", value=False)
 with col_tog2:
     show_doctors = st.toggle("🩺 Show doctors", value=False)
+#setting up the toggles to show or hide pharmacies and doctors
 
 st_folium(
     build_map(
@@ -529,13 +538,14 @@ st_folium(
         pharmacies=pharmacies if show_pharmacies else [],
         doctors=doctors if show_doctors else [],
     ),
-    height=460, use_container_width=True
-)
+    height=460, use_container_width=True)
+#showing map in the website with all the previously set up info (weather, home, pollen, doctors, pharmacies)
+
 
 st.divider()
 
 # ── Section 5: 5-Day Forecast ──────────────────────────────────────────────────
-st.subheader("📈 5-Day Pollen Forecast")
+st.subheader("📈 5-Day Pollen Forecast") #section title
 
 fig = go.Figure()
 for pollen in selected_pollens:
@@ -549,34 +559,36 @@ for pollen in selected_pollens:
         x=df["time"], y=vals, name=pollen,
         line=dict(color=clr, width=2.5),
         fill="tozeroy", fillcolor=f"rgba({r},{g},{b},0.10)",
-        mode="lines",
-    ))
+        mode="lines",))
+#draws one line per selected pollen on the forecast chart
 
 fig.add_vline(x=datetime.now().timestamp() * 1000, line_dash="dash", line_color="#adb5bd",
               annotation_text="Now", annotation_position="top right")
+#adds a vertical dashed line at the current time so users can see where they are in th chart
 
 t = THRESHOLDS[selected_pollens[0]]
 fig.add_hrect(y0=0,    y1=t[0], fillcolor="green",  opacity=0.03, line_width=0)
 fig.add_hrect(y0=t[0], y1=t[1], fillcolor="green",  opacity=0.05, line_width=0)
 fig.add_hrect(y0=t[1], y1=t[2], fillcolor="orange", opacity=0.05, line_width=0)
 fig.add_hrect(y0=t[2], y1=t[3], fillcolor="red",    opacity=0.05, line_width=0)
+#adds horiozontal bands of colored background to show the areas with low, moderate, high and very high pollen levels/ risk
 
 fig.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     xaxis=dict(title="", gridcolor="#f0f0f0"),
     yaxis=dict(title="Pollen (grains/m³)", gridcolor="#f0f0f0"),
     plot_bgcolor="white", paper_bgcolor="white",
-    margin=dict(l=10, r=10, t=40, b=10), height=360,
-)
+    margin=dict(l=10, r=10, t=40, b=10), height=360)
 st.plotly_chart(fig, use_container_width=True)
+#styles the chart with white background, horizontal legend and shows it in the website
 
 st.divider()
 
 # ── Section 6: Nearby Pharmacies & Doctors ────────────────────────────────────
-st.subheader("💊 Nearby Pharmacies & Doctors")
-st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}")
+st.subheader("💊 Nearby Pharmacies & Doctors") #section header
+st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}") #subtitle in light grey
 
-show_list = st.toggle("📋 Show list", value=False)
+show_list = st.toggle("📋 Show list", value=False) #setting up the toggle
 if show_list:
     col_pharm, col_doc = st.columns(2)
     with col_pharm:
@@ -593,6 +605,7 @@ if show_list:
                 st.markdown(f"👨‍⚕️ **{d['name']}**  \n📍 {d['address']}")
         else:
             st.info("No doctors found nearby.")
+#shows the list of nearby pharmacies and doctors in two columns if the toggle/ button is activated
 
 st.divider()
-st.caption("🌿 BlessYou · Pollen: Open-Meteo · Weather: Open-Meteo · Places: OpenStreetMap")
+st.caption("🌿 BlessYou · Pollen: Open-Meteo · Weather: Open-Meteo · Places: OpenStreetMap") #sources in light grey at bottom of page
