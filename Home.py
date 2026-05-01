@@ -416,8 +416,17 @@ with st.spinner("Fetching map data…"):
     all_data = fetch_all_stations(tuple(api_vars))
 
 def build_map(weather=None, pharmacies=[], doctors=[]):
-    m = folium.Map(location=[46.8, 8.2], zoom_start=8, tiles="CartoDB positron", control_scale=True)
+    m = folium.Map(
+        location=[46.8, 8.2],
+        zoom_start=8,
+        tiles="CartoDB positron",
+        control_scale=True,
+        min_zoom=7,
+        max_zoom=13,
+        max_bounds=True,
+    )
     m.fit_bounds([[45.8, 5.9], [47.9, 10.5]])
+    m.options['minZoom'] = 7
     m.options['maxBounds'] = [[45.5, 5.5], [48.2, 10.8]]
     m.options['maxBoundsViscosity'] = 1.0
     heat_pts = []
