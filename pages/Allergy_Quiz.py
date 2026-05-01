@@ -52,14 +52,16 @@ if not p["quiz_done"]:
     st.subheader("👤 A bit about you")
     col1, col2 = st.columns(2)
     with col1:
-        quiz_city = st.selectbox(
-            "📍 Your city",
-            options=list({
-                "Zürich", "Bern", "Basel", "Geneva", "Lausanne", "Luzern",
-                "St. Gallen", "Lugano", "Sion", "Davos", "Neuchâtel",
-                "Aarau", "Chur", "Frauenfeld", "Bellinzona"
-            }),
-        )
+        CITY_LIST = [
+    "Zürich", "Bern", "Basel", "Geneva", "Lausanne", "Luzern",
+    "St. Gallen", "Lugano", "Sion", "Davos", "Neuchâtel",
+    "Aarau", "Chur", "Frauenfeld", "Bellinzona"
+]
+quiz_city = st.selectbox(
+    "📍 Your city",
+    options=CITY_LIST,
+    index=CITY_LIST.index(p["city"]) if p["city"] in CITY_LIST else 0,
+)
         quiz_age = st.radio(
             "🎂 Your age group",
             ["Under 12", "12–65", "Over 65"],
