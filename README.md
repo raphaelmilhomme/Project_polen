@@ -14,6 +14,7 @@ Prerequisites:
     -supabase: connecting the Community page to the database so we can save the comments, pollen sightings, tips...
 
 -You can install them all at once with the command: pip install -r requirements.txt
+-Run the app: streamlit run Home.py
 
 
 
@@ -42,10 +43,7 @@ READ ME Plant Identifier:
 - Format: ONNX (CPU inference via onnxruntime)
 - Training Dataset: PlantCLEF (Kaggle) + iNaturalist see training secction
 
-3. Requirement:
-- See above
-
-4. Data source:
+3. Data source:
 - iNaturalist Free API api.inaturalist.org/v1/observations (no key=; filter place_id=6753 - Research grade only
 - PlanClef (1000 species of plant common in France) then I selected them according to thre criterias:
 
@@ -53,14 +51,14 @@ i. At least 100 photos
 ii. Common in Switzerland
 iii. And add the one with high allergen
 
-5.Allergen Database
+4. Allergen Database
 - The app includes allergen data for 28+ key Swiss species including:
 ii. High: Silver Birch (Betula pendula), Common Ash (Fraxinus excelsior), Perennial Ryegrass (Lolium perenne)
 iii. Moderate: Common Hornbeam (Carpinus betulus), Sessile Oak (Quercus petraea)
 iV. Low: Norway Spruce (Picea abies), Small Leaved Lime (Tilia cordata)
 
 
-6.How Plant Identification Works
+5. How Plant Identification Works
 
 - User uploads one or more photos of the same plant
 - Each image is resized to 300*300 and normalized
@@ -69,7 +67,7 @@ iV. Low: Norway Spruce (Picea abies), Small Leaved Lime (Tilia cordata)
 - The top prediction is shown with allergen information
 - 3 alternative species are listed as fallback options
 
-7. Training
+6. Training
 - Phase 1: Train head only (10 epochs, lr=0.001)
 - Phase 2: Full fine-tuning (50 epochs, lr=0.0001)
 - Data augmentation: rotation, zoom, brightness, flip
