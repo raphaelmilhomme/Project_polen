@@ -49,7 +49,7 @@ DEFAULT_PROFILE = {
     "risk_score": None,
     "risk_badge": None,
     "setup_done": False,
-    "quiz_done": False,
+    "quiz_done": False,   # ← make sure this line is there
 }
 
 def init_profile():
