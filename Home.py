@@ -160,28 +160,28 @@ with st.sidebar:
         "🎂 Age group",
         ["Under 12", "12–65", "Over 65"],
         index=["Under 12", "12–65", "Over 65"].index(p["age_group"]) if p["age_group"] in ["Under 12", "12–65", "Over 65"] else 1,
-        horizontal=True,
-    )
+        horizontal=True,)
+#enables you to select your age group
     has_asthma = st.radio(
         "🫁 Asthma?",
         ["No", "Yes"],
         index=["No", "Yes"].index(p["asthma"]),
-        horizontal=True,
-    )
+        horizontal=True,)
+#enables you to select if you have asthma
     med_options = [
         "No medication",
         "Antihistamines (e.g. Cetirizine)",
         "Nasal spray",
-        "Both antihistamines + nasal spray",
-    ]
+        "Both antihistamines + nasal spray",]
     medication = st.selectbox(
         "💊 Medication",
         med_options,
-        index=med_options.index(p["medication"]) if p["medication"] in med_options else 0,
-    )
+        index=med_options.index(p["medication"]) if p["medication"] in med_options else 0,)
+#enables you to select if you take medications and which ones
     hours_outside = st.slider("🚶 Hours outside today", 0, 12, p["hours_outside"])
+#enables you to select how many hours outside
 
-    # Save everything including city to shared profile
+
     set_profile({
         "city":          selected_city,
         "pollens":       selected_pollens,
@@ -190,13 +190,13 @@ with st.sidebar:
         "asthma":        has_asthma,
         "medication":    medication,
         "hours_outside": hours_outside,
-        "setup_done":    True,
-    })
+        "setup_done":    True,})
+# Save everything including city to shared profile
 
     st.divider()
     if st.button("↻ Refresh Data", use_container_width=True):
         st.cache_data.clear()
-
+#enables you to refresh data if for example something doesn't work or if you loaded the website yesterday
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 col_title, col_meta = st.columns([3, 1])
@@ -206,31 +206,34 @@ with col_title:
 with col_meta:
     city_info = STATIONS.get(selected_city, {})
     st.metric(label="📍 Location", value=selected_city, delta=f"Canton {city_info.get('canton', '')}")
-
+#creates the header with title on the left, the date on the bottom in light gray and location on the right, showing the selected city
 st.divider()
-profile_banner()
+profile_banner() # shows a summary of the user's selected city, allergies, today's risk and selected medication
 st.divider()
 
 if not selected_pollens:
     st.info("👈 Select at least one pollen type in the sidebar to get started.")
     st.stop()
+#sort of error message that shows up if no pollen was selected; risk would be 0 and website useless
 
 # ── Fetch data ─────────────────────────────────────────────────────────────────
 home     = STATIONS[selected_city]
 api_vars = list({POLLEN_PARAMS[p_]["api"] for p_ in selected_pollens})
+#gets the coordinates of the selected city and creates a list with the selected pollens
 
 with st.spinner(f"Loading pollen forecast for {selected_city}…"):
     hourly = fetch_pollen(home["lat"], home["lon"], api_vars)
-
 if not hourly:
     st.error("❌ Could not load pollen data. Check your connection.")
     st.stop()
+#gets the pollen, weather and nearby places data for the selected city, shows error if pollen data could not be loaded
 
 df         = pd.DataFrame(hourly)
 df["time"] = pd.to_datetime(df["time"])
 df         = df.sort_values("time").reset_index(drop=True)
 today      = datetime.now().date()
 today_df   = df[df["time"].dt.date == today]
+#converts the API's response in a table with timestamps, sorts by time and only keeps today's data
 
 today_vals = {}
 for pollen in selected_pollens:
@@ -240,16 +243,19 @@ for pollen in selected_pollens:
         today_vals[pollen] = float(vals.max()) if len(vals) > 0 else np.nan
     else:
         today_vals[pollen] = np.nan
+#finds the peak pollen value today for each selected pollen, assigns NaN if data is missing
 
 with st.spinner("Loading weather..."):
     weather = fetch_weather(home["lat"], home["lon"])
+#gets weather for selected city
 
 with st.spinner("Loading pharmacies and doctors..."):
     pharmacies = fetch_places_osm(home["lat"], home["lon"], "pharmacy")
     doctors    = fetch_places_osm(home["lat"], home["lon"], "doctors")
+#gets nearby pharmacies and doctors
 
 # ── Section 1: Today's Pollen Levels ──────────────────────────────────────────
-st.subheader("🌿 Today's Pollen Levels")
+st.subheader("🌿 Today's Pollen Levels") #section title
 
 cols = st.columns(len(selected_pollens))
 pollen_levels = {}
@@ -268,11 +274,12 @@ for i, pollen in enumerate(selected_pollens):
             delta_color="off",
         )
         st.caption(f"{level_emoji(level)} {level.upper()}")
+#displays today's pollen peak for every selected pollen allergy, the color scores and comments are adjusted for user sensitivity. Also shows if pollen is in season
 
 st.divider()
 
 # ── Section 2: Weather + Personal Risk Score ───────────────────────────────────
-st.subheader("🌤️ Weather & Your Personal Risk Score")
+st.subheader("🌤️ Weather & Your Personal Risk Score") # Section Title
 
 if weather:
     temp     = weather.get("temperature_2m", "N/A")
@@ -285,6 +292,7 @@ if weather:
     wcol2.metric("💧 Humidity",    f"{humidity}%")
     wcol3.metric("🌧️ Rain",        f"{rain} mm")
     wcol4.metric("🌬️ Wind Speed",  f"{wind} km/h")
+#shows temperature, humidity, rain and wind as 4 cards based on the Open Weather Meteo API
 
     if isinstance(wind, (int, float)) and wind > 20:
         st.warning(f"🌬️ High wind today ({wind} km/h) — pollen is spreading more than usual!")
@@ -296,15 +304,17 @@ if weather:
         st.info(f"💧 High humidity ({humidity}%) — pollen tends to clump and fall. Slightly better!")
     else:
         st.info("🌤️ Normal weather conditions today.")
+#shows a tip depending on the weather conditions/ their impact on pollen
 
     st.divider()
-    st.markdown("#### 🎯 Your Personal Risk Score")
+    st.markdown("#### 🎯 Your Personal Risk Score") #section title
 
     raw_scores   = [LEVEL_SCORES[pollen_levels[p_]] for p_ in selected_pollens]
     worst_raw    = max(raw_scores)
     other_scores = sorted(raw_scores, reverse=True)[1:]
     additional   = sum(s * 0.2 for s in other_scores)
     avg_raw      = min(worst_raw + additional, 10.0)
+#calculates a "pollen score" by taking the worst pollen and adding 20% of every other pollen score on top
 
     age_factor        = 1.2 if age_group in ["Under 12", "Over 65"] else 1.0
     asthma_factor     = 1.3 if has_asthma == "Yes" else 1.0
@@ -315,24 +325,29 @@ if weather:
         "Both antihistamines + nasal spray": 0.5,
     }[medication]
     exposure_factor = 1 + (hours_outside * 0.05)
+#if selected, factors that multiply the original score (age and asthma increase it while medication reduces it, time outisde adds 5% per hour)
 
     weather_factor = 1.0
     if isinstance(wind,     (int, float)) and wind     > 20: weather_factor += 0.2
     if isinstance(rain,     (int, float)) and rain     > 0:  weather_factor -= 0.2
     if isinstance(humidity, (int, float)) and humidity < 40: weather_factor += 0.1
+#weather factor that adjusts score: wind increases factor, rain decreases it, low humidity increases it
 
     final_score = min(round(
         avg_raw * age_factor * asthma_factor * medication_factor
         * exposure_factor * weather_factor, 1
     ), 10.0)
+#Multiplies all factors together to get final score, max 10
 
     if final_score <= 2:   badge, badge_color = "🟢 Safe Day",        "success"
     elif final_score <= 4: badge, badge_color = "🟡 Low Risk Day",    "success"
     elif final_score <= 6: badge, badge_color = "🟠 Caution Day",     "warning"
     elif final_score <= 8: badge, badge_color = "🔴 High Risk Day",   "error"
     else:                  badge, badge_color = "🟣 Stay Inside Day", "error"
+#Assigns a color based on the final score calculated above
 
     set_profile({"risk_score": final_score, "risk_badge": badge})
+#saves risk score and badge so later, when you will post on community page, these elements can be diplayed
 
     col_score, col_badge, col_explain = st.columns([1, 1, 2])
     with col_score:
@@ -350,8 +365,8 @@ if weather:
             f"- Medication: **{medication}**\n"
             f"- Hours outside: **{hours_outside}h**\n"
             f"- Weather: **{'↑ worse' if weather_factor > 1 else '↓ better' if weather_factor < 1 else 'neutral'}**\n"
-            f"- Age factor: **{'Yes' if age_group in ['Under 12', 'Over 65'] else 'No'}**"
-        )
+            f"- Age factor: **{'Yes' if age_group in ['Under 12', 'Over 65'] else 'No'}**")
+#Displays you personal risk score as a number/10, a score bar and estimates the risk for you today based on all the information you entered, as well as the pollen data and weather. Shows breakdown of how this is calculated on the right
 
     st.divider()
     st.markdown("#### 💊 Medication Reminder")
@@ -369,11 +384,11 @@ if weather:
 
 else:
     st.warning("Could not load weather data.")
-
+#shows a reminder/ advice for the user to take his medication at specific times if he selected one and if not but score is high, recommends going to speak to a doctor
 st.divider()
 
 # ── Section 3: Best Day This Week ─────────────────────────────────────────────
-st.subheader("📅 Best Day to Go Outside This Week")
+st.subheader("📅 Best Day to Go Outside This Week") #section title
 
 df["date"]   = df["time"].dt.date
 daily_scores = []
