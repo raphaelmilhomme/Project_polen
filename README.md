@@ -2,6 +2,12 @@ This is the description of the project of the Group number 12.09
 We installed these libraries...
 
 
+
+
+READ ME Home:
+
+
+
 READ ME Plant Identifier:
 1. Goals:
 - Use a data base and deep learning to make a plant identifier where one can put some photos, to see if the plant has pollen
