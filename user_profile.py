@@ -39,17 +39,17 @@ THRESHOLDS = {
 LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
 
 DEFAULT_PROFILE = {
-    "city": "Zürich",
-    "pollens": [],
+    "city":          "Zürich",
+    "pollens":       [],
     "sensitivities": {},
-    "age_group": "12–65",
-    "asthma": "No",
-    "medication": "No medication",
+    "age_group":     "12–65",
+    "asthma":        "No",
+    "medication":    "No medication",
     "hours_outside": 2,
-    "risk_score": None,
-    "risk_badge": None,
-    "setup_done": False,
-    "quiz_done": False,
+    "risk_score":    None,
+    "risk_badge":    None,
+    "setup_done":    False,
+    "quiz_done":     False,
 }
 
 def init_profile():

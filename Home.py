@@ -70,7 +70,7 @@ def fetch_weather(lat, lon):
 
 @st.cache_data(ttl=86400)
 def fetch_places_osm(lat, lon, amenity):
-    url = "https://overpass-api.de/api/interpreter"
+    url   = "https://overpass-api.de/api/interpreter"
     query = f"""
     [out:json][timeout:30];
     (
@@ -84,17 +84,16 @@ def fetch_places_osm(lat, lon, amenity):
             url,
             data={"data": query},
             timeout=30,
-            headers={"User-Agent": "BlessYou-App/1.0"}
+            headers={"User-Agent": "BlessYou-App/1.0"},
         )
         r.raise_for_status()
-        elements = r.json().get("elements", [])
         places = []
-        for el in elements:
-            tags = el.get("tags", {})
-            name = tags.get("name", "Unknown")
+        for el in r.json().get("elements", []):
+            tags   = el.get("tags", {})
+            name   = tags.get("name", "Unknown")
             street = tags.get("addr:street", "")
             number = tags.get("addr:housenumber", "")
-            addr = f"{street} {number}".strip() or "Address not available"
+            addr   = f"{street} {number}".strip() or "Address not available"
             if el["type"] == "node":
                 la, lo = el.get("lat"), el.get("lon")
             else:
@@ -104,7 +103,6 @@ def fetch_places_osm(lat, lon, amenity):
                 places.append({"name": name, "address": addr, "lat": la, "lon": lo})
         return places[:8]
     except Exception as e:
-        st.warning(f"Could not load {amenity} data: {e}")
         return []
 
 def is_in_season(pollen):
@@ -140,10 +138,9 @@ with st.sidebar:
             key=f"sens_{pollen}"
         )
 
-    detected_city = detect_city()
-    city_list     = list(STATIONS.keys())
-    saved_city    = p["city"] if p["city"] in city_list else detected_city
-    default_idx   = city_list.index(saved_city)
+    city_list   = list(STATIONS.keys())
+    saved_city  = p["city"] if p["city"] in city_list else detect_city()
+    default_idx = city_list.index(saved_city)
 
     selected_city = st.selectbox("📍 Your location", options=city_list, index=default_idx)
 
@@ -175,6 +172,7 @@ with st.sidebar:
     )
     hours_outside = st.slider("🚶 Hours outside today", 0, 12, p["hours_outside"])
 
+    # Save everything including city to shared profile
     set_profile({
         "city":          selected_city,
         "pollens":       selected_pollens,
@@ -247,11 +245,11 @@ st.subheader("🌿 Today's Pollen Levels")
 cols = st.columns(len(selected_pollens))
 pollen_levels = {}
 for i, pollen in enumerate(selected_pollens):
-    val         = today_vals.get(pollen, np.nan)
-    mult        = sensitivity_mult(sensitivities.get(pollen, "Medium"))
-    level       = get_level(val, THRESHOLDS[pollen], mult)
+    val          = today_vals.get(pollen, np.nan)
+    mult         = sensitivity_mult(sensitivities.get(pollen, "Medium"))
+    level        = get_level(val, THRESHOLDS[pollen], mult)
     pollen_levels[pollen] = level
-    display_val = f"{val:.0f} gr/m³" if not np.isnan(val) else "N/A"
+    display_val  = f"{val:.0f} gr/m³" if not np.isnan(val) else "N/A"
     season_label = "🟢 In season" if is_in_season(pollen) else "⚪ Out of season"
     with cols[i]:
         st.metric(
@@ -264,7 +262,7 @@ for i, pollen in enumerate(selected_pollens):
 
 st.divider()
 
-# ── Section 2: Live Weather + Personal Risk Score ──────────────────────────────
+# ── Section 2: Weather + Personal Risk Score ───────────────────────────────────
 st.subheader("🌤️ Weather & Your Personal Risk Score")
 
 if weather:
@@ -279,7 +277,6 @@ if weather:
     wcol3.metric("🌧️ Rain",        f"{rain} mm")
     wcol4.metric("🌬️ Wind Speed",  f"{wind} km/h")
 
-    # Weather tip
     if isinstance(wind, (int, float)) and wind > 20:
         st.warning(f"🌬️ High wind today ({wind} km/h) — pollen is spreading more than usual!")
     elif isinstance(rain, (int, float)) and rain > 0:
@@ -287,11 +284,10 @@ if weather:
     elif isinstance(humidity, (int, float)) and humidity < 40:
         st.warning(f"☀️ Low humidity ({humidity}%) — dry air means pollen stays airborne longer.")
     elif isinstance(humidity, (int, float)) and humidity > 70:
-        st.info(f"💧 High humidity ({humidity}%) — pollen tends to clump and fall. Slightly better conditions!")
+        st.info(f"💧 High humidity ({humidity}%) — pollen tends to clump and fall. Slightly better!")
     else:
-        st.info("🌤️ Normal weather conditions today — no special weather impact on pollen levels.")
+        st.info("🌤️ Normal weather conditions today.")
 
-    # ── Personal Risk Score ────────────────────────────────────────────────────
     st.divider()
     st.markdown("#### 🎯 Your Personal Risk Score")
 
@@ -339,16 +335,15 @@ if weather:
     with col_explain:
         st.info(
             f"**How this is calculated:**\n\n"
-            f"- Pollen levels: {', '.join([f'{p_} ({pollen_levels[p_]})' for p_ in selected_pollens])}\n"
+            f"- Pollen: {', '.join([f'{p_} ({pollen_levels[p_]})' for p_ in selected_pollens])}\n"
             f"- Sensitivity: **{list(sensitivities.values())[0] if sensitivities else 'Medium'}**\n"
             f"- Asthma: **{has_asthma}**\n"
             f"- Medication: **{medication}**\n"
             f"- Hours outside: **{hours_outside}h**\n"
-            f"- Weather impact: **{'↑ worse' if weather_factor > 1 else '↓ better' if weather_factor < 1 else 'neutral'}**\n"
+            f"- Weather: **{'↑ worse' if weather_factor > 1 else '↓ better' if weather_factor < 1 else 'neutral'}**\n"
             f"- Age factor: **{'Yes' if age_group in ['Under 12', 'Over 65'] else 'No'}**"
         )
 
-    # Medication reminder
     st.divider()
     st.markdown("#### 💊 Medication Reminder")
     if medication == "No medication":
@@ -413,10 +408,10 @@ def fetch_all_stations(pollen_vars):
     for city, info in STATIONS.items():
         data = fetch_pollen(info["lat"], info["lon"], list(pollen_vars))
         if data:
-            tdf        = pd.DataFrame(data)
+            tdf         = pd.DataFrame(data)
             tdf["time"] = pd.to_datetime(tdf["time"])
-            today_data = tdf[tdf["time"].dt.date == datetime.now().date()]
-            city_vals  = {}
+            today_data  = tdf[tdf["time"].dt.date == datetime.now().date()]
+            city_vals   = {}
             for var in pollen_vars:
                 if var in today_data.columns:
                     peak = pd.to_numeric(today_data[var], errors="coerce").max()
@@ -443,9 +438,10 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
     m.options['minZoom'] = 7
     m.options['maxBounds'] = [[45.5, 5.5], [48.2, 10.8]]
     m.options['maxBoundsViscosity'] = 1.0
+
     heat_pts = []
     for city, info in STATIONS.items():
-        city_vals = all_data.get(city, {})
+        city_vals    = all_data.get(city, {})
         total, worst = 0.0, "none"
         for pollen in selected_pollens:
             api_key = POLLEN_PARAMS[pollen]["api"]
@@ -484,13 +480,17 @@ def build_map(weather=None, pharmacies=[], doctors=[]):
     ).add_to(m)
 
     for ph in pharmacies:
-        folium.Marker([ph["lat"], ph["lon"]], tooltip=ph["name"],
-                      popup=folium.Popup(f"<b>💊 {ph['name']}</b><br>📍 {ph['address']}", max_width=200),
-                      icon=folium.Icon(color="red", icon="plus", prefix="fa")).add_to(m)
+        folium.Marker(
+            [ph["lat"], ph["lon"]], tooltip=ph["name"],
+            popup=folium.Popup(f"<b>💊 {ph['name']}</b><br>📍 {ph['address']}", max_width=200),
+            icon=folium.Icon(color="red", icon="plus", prefix="fa"),
+        ).add_to(m)
     for d in doctors:
-        folium.Marker([d["lat"], d["lon"]], tooltip=d["name"],
-                      popup=folium.Popup(f"<b>🩺 {d['name']}</b><br>📍 {d['address']}", max_width=200),
-                      icon=folium.Icon(color="blue", icon="user-md", prefix="fa")).add_to(m)
+        folium.Marker(
+            [d["lat"], d["lon"]], tooltip=d["name"],
+            popup=folium.Popup(f"<b>🩺 {d['name']}</b><br>📍 {d['address']}", max_width=200),
+            icon=folium.Icon(color="blue", icon="user-md", prefix="fa"),
+        ).add_to(m)
     return m
 
 col_tog1, col_tog2 = st.columns(2)
@@ -500,9 +500,11 @@ with col_tog2:
     show_doctors = st.toggle("🩺 Show doctors", value=False)
 
 st_folium(
-    build_map(weather=weather,
-              pharmacies=pharmacies if show_pharmacies else [],
-              doctors=doctors if show_doctors else []),
+    build_map(
+        weather=weather,
+        pharmacies=pharmacies if show_pharmacies else [],
+        doctors=doctors if show_doctors else [],
+    ),
     height=460, use_container_width=True
 )
 

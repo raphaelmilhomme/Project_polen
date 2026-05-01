@@ -47,20 +47,18 @@ user_badge    = p["risk_badge"] or ""
 user_pollens  = ", ".join(p["pollens"]) if p["pollens"] else ""
 profile_ready = p["setup_done"]
 
+# City comes from profile — no city selector here
+selected_city = p["city"]
+
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.title("🤝 BlessYou Community")
 st.markdown("### Connect with other allergy sufferers across Switzerland!")
 st.divider()
 
 profile_banner()
-st.divider()
 
-# ── City selector ──────────────────────────────────────────────────────────────
-CITIES = ["Zürich", "Bern", "Basel", "Geneva", "Lausanne", "Luzern",
-          "St. Gallen", "Lugano", "Sion", "Davos"]
-
-default_city_idx = CITIES.index(p["city"]) if p["city"] in CITIES else 0
-selected_city    = st.selectbox("📍 Your city", options=CITIES, index=default_city_idx)
+# Show which city is being used
+st.caption(f"📍 Showing community data for **{selected_city}** — change your city on the 🏠 Home page or in the 🌿 Allergy Quiz.")
 st.divider()
 
 # ── Section 1: Community Report ───────────────────────────────────────────────
@@ -80,7 +78,7 @@ if total > 0:
             st.metric(label=feeling, value=f"{pct}%", delta=f"{counts[feeling]} reports")
     st.caption(f"Based on {total} reports in {selected_city} today")
 else:
-    st.info("No reports yet for this city today — be the first!")
+    st.info(f"No reports yet for {selected_city} today — be the first!")
 
 if "user_reported" not in st.session_state:
     st.session_state.user_reported = False
@@ -185,9 +183,11 @@ with st.form("sighting_form"):
     if st.form_submit_button("Report sighting 🌿", use_container_width=True) and sighting_desc:
         try:
             supabase.table("sightings").insert({
-                "city": selected_city, "pollen": sighting_pollen,
-                "description": sighting_desc, "date": datetime.now().strftime("%d %b"),
-                "badge": user_badge if profile_ready else "",
+                "city":        selected_city,
+                "pollen":      sighting_pollen,
+                "description": sighting_desc,
+                "date":        datetime.now().strftime("%d %b"),
+                "badge":       user_badge if profile_ready else "",
             }).execute()
             st.success("✅ Sighting reported!")
             st.rerun()
@@ -219,9 +219,10 @@ with st.form("discussion_form"):
     if st.form_submit_button("Post comment 💬", use_container_width=True) and new_comment:
         try:
             supabase.table("comments").insert({
-                "city": selected_city, "comment": new_comment,
-                "date": datetime.now().strftime("%d %b"),
-                "badge": user_badge if profile_ready else "",
+                "city":    selected_city,
+                "comment": new_comment,
+                "date":    datetime.now().strftime("%d %b"),
+                "badge":   user_badge   if profile_ready else "",
                 "pollens": user_pollens if profile_ready else "",
             }).execute()
             st.success("✅ Comment posted!")
