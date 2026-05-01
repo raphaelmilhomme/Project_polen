@@ -17,7 +17,7 @@ Prerequisites:
 -Run the app: streamlit run Home.py
 
 Project description:
--Bless You is a real time pollen forecast web app built for people who suffer of pollen allergies in Switzerland, especially in cities
+-BlessYou is a real time pollen forecast web app built for people who suffer of pollen allergies in Switzerland, especially in cities
 -the website is built like this:
     Home Page:
         -You can enter your pollen allergies on the left with a choice of 5 different ones (Birch Grass, Mugwort, Hazel and Alder)
@@ -25,6 +25,19 @@ Project description:
         -other informations can be added to your profile such as you location, your age group, whether you have asthma, whether you take medication for your pollen allergies, as well as how long you want to go outside today
         --> based on all this personnal information, the Open-Meteo Air Quality API and Weather API, as well as the OpenStreetMap API, the website shows you the current pollen levels of the ones you are allergic to and adapts the risk score based on your personal sensitivity and caracteristics. Then, the weather is shown, since this can have a significant impact on pollen levels. Your Personal Risk score based on all your personal information and daily pollen/ weather data is also shown. Based on this, the app can recommend you to take medications and when it would be better to go outside this week.
         -The "Switzerland Pollen Map" shows the pollen level in every major swiss city by clicking on the corresponding dots. You can also activate the Pharmacies and Doctors map, showing you their pins on the map in the city where you are located (marked with a small house).
+        -The "5-Day Pollen Forecast" shows the levels of Pollen grains per m3 for the pollens you selected as being allergic to.
+        -Finally, the "Nearby Pharmacies & Doctors" section enables you to show the list of pharmacies and doctors next to your selected location.
+    
+    Allergy Quiz:
+        -It enables you to fill out your personal information, as well as potential symptoms you have felt in the past.
+        -The goal is to try and detect potential pollen allergies that you might have, while not being aware of them.
+    
+    BlessYou Community:
+        -Goal is for users to be able to communicate and share their experiences and tips.
+        -First you can enter how you felt today regarding your allergies and compare it with other users.
+        -Then you can look at various tips from other users for your selected location or in Switzerland as a whole.
+        -You can also enter your own tips which will appear for all users.
+        -The "Pollen Sightings" section enables you to report your personal experience as to what pollen you saw when going out.
 
 READ ME Plant Identifier:
 1. Goals:
