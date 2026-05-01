@@ -13,7 +13,6 @@ from user_profile import (
     sensitivity_mult, get_level, level_color, level_emoji,
 )
 
-# ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="BlessYou · Swiss Pollen Forecast",
     page_icon="🌿",
@@ -24,21 +23,21 @@ st.set_page_config(
 init_profile()
 p = get_profile()
 
-# ── Auto Location Detection ────────────────────────────────────────────────────
+LEVEL_SCORES = {"none": 0, "low": 2, "moderate": 5, "high": 7, "very high": 10}
+
+# ── Data fetching ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
-def detect_city() -> str:
+def detect_city():
     try:
         r = requests.get("https://ipapi.co/json/", timeout=5)
-        data = r.json()
-        detected = data.get("city", "Zürich")
-        for city in STATIONS.keys():
+        detected = r.json().get("city", "Zürich")
+        for city in STATIONS:
             if city.lower() in detected.lower() or detected.lower() in city.lower():
                 return city
         return "Zürich"
-    except Exception:
+    except:
         return "Zürich"
 
-# ── Data fetching ──────────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
 def fetch_pollen(lat, lon, pollen_vars):
     variables = ",".join(set(pollen_vars))
@@ -51,7 +50,7 @@ def fetch_pollen(lat, lon, pollen_vars):
         r = requests.get(url, timeout=15)
         r.raise_for_status()
         return r.json().get("hourly", None)
-    except Exception:
+    except:
         return None
 
 @st.cache_data(ttl=3600)
@@ -66,38 +65,36 @@ def fetch_weather(lat, lon):
         r = requests.get(url, timeout=15)
         r.raise_for_status()
         return r.json().get("current", None)
-    except Exception:
+    except:
         return None
 
 @st.cache_data(ttl=86400)
 def fetch_places_osm(lat, lon, amenity):
-    url = "https://overpass-api.de/api/interpreter"
+    url   = "https://overpass-api.de/api/interpreter"
     query = f"[out:json][timeout:25];(node[amenity={amenity}](around:5000,{lat},{lon});way[amenity={amenity}](around:5000,{lat},{lon}););out body center;"
     try:
         r = requests.get(url, params={"data": query}, timeout=25, headers={"User-Agent": "BlessYou-App/1.0"})
         r.raise_for_status()
-        elements = r.json().get("elements", [])
         places = []
-        for el in elements:
-            tags = el.get("tags", {})
-            name = tags.get("name", "Unknown")
+        for el in r.json().get("elements", []):
+            tags   = el.get("tags", {})
+            name   = tags.get("name", "Unknown")
             street = tags.get("addr:street", "")
-            housenumber = tags.get("addr:housenumber", "")
-            address = f"{street} {housenumber}".strip() or "Address not available"
+            number = tags.get("addr:housenumber", "")
+            addr   = f"{street} {number}".strip() or "Address not available"
             if el["type"] == "node":
-                place_lat, place_lon = el.get("lat"), el.get("lon")
+                la, lo = el.get("lat"), el.get("lon")
             else:
-                center = el.get("center", {})
-                place_lat, place_lon = center.get("lat"), center.get("lon")
-            if place_lat and place_lon:
-                places.append({"name": name, "address": address, "lat": place_lat, "lon": place_lon})
+                c = el.get("center", {})
+                la, lo = c.get("lat"), c.get("lon")
+            if la and lo:
+                places.append({"name": name, "address": addr, "lat": la, "lon": lo})
         return places[:8]
-    except Exception as e:
-        st.warning(f"Could not load places: {e}")
+    except:
         return []
 
 def is_in_season(pollen):
-    month = datetime.now().month
+    month   = datetime.now().month
     seasons = {
         "Birch":   [3, 4, 5],
         "Grass":   [5, 6, 7, 8],
@@ -118,6 +115,7 @@ with st.sidebar:
         options=list(POLLEN_PARAMS.keys()),
         default=p["pollens"] if p["pollens"] else ["Birch", "Grass"],
     )
+
     st.markdown("**🎚️ Your sensitivity per pollen:**")
     sensitivities = {}
     for pollen in selected_pollens:
@@ -129,20 +127,49 @@ with st.sidebar:
         )
 
     detected_city = detect_city()
-    city_list = list(STATIONS.keys())
-    saved_city = p["city"] if p["setup_done"] else detected_city
-    default_index = city_list.index(saved_city) if saved_city in city_list else 0
+    city_list     = list(STATIONS.keys())
+    saved_city    = p["city"] if p["city"] in city_list else detected_city
+    default_idx   = city_list.index(saved_city)
 
-    selected_city = st.selectbox(
-        "📍 Your location",
-        options=city_list,
-        index=default_index,
+    selected_city = st.selectbox("📍 Your location", options=city_list, index=default_idx)
+
+    st.divider()
+    st.markdown("**👤 Your profile**")
+
+    age_group = st.radio(
+        "🎂 Age group",
+        ["Under 12", "12–65", "Over 65"],
+        index=["Under 12", "12–65", "Over 65"].index(p["age_group"]) if p["age_group"] in ["Under 12", "12–65", "Over 65"] else 1,
+        horizontal=True,
     )
+    has_asthma = st.radio(
+        "🫁 Asthma?",
+        ["No", "Yes"],
+        index=["No", "Yes"].index(p["asthma"]),
+        horizontal=True,
+    )
+    med_options = [
+        "No medication",
+        "Antihistamines (e.g. Cetirizine)",
+        "Nasal spray",
+        "Both antihistamines + nasal spray",
+    ]
+    medication = st.selectbox(
+        "💊 Medication",
+        med_options,
+        index=med_options.index(p["medication"]) if p["medication"] in med_options else 0,
+    )
+    hours_outside = st.slider("🚶 Hours outside today", 0, 12, p["hours_outside"])
 
     set_profile({
-        "city": selected_city,
-        "pollens": selected_pollens,
+        "city":          selected_city,
+        "pollens":       selected_pollens,
         "sensitivities": sensitivities,
+        "age_group":     age_group,
+        "asthma":        has_asthma,
+        "medication":    medication,
+        "hours_outside": hours_outside,
+        "setup_done":    True,
     })
 
     st.divider()
@@ -168,21 +195,21 @@ if not selected_pollens:
     st.stop()
 
 # ── Fetch data ─────────────────────────────────────────────────────────────────
-home = STATIONS[selected_city]
+home     = STATIONS[selected_city]
 api_vars = list({POLLEN_PARAMS[p_]["api"] for p_ in selected_pollens})
 
 with st.spinner(f"Loading pollen forecast for {selected_city}…"):
     hourly = fetch_pollen(home["lat"], home["lon"], api_vars)
 
 if not hourly:
-    st.error("❌ Could not load pollen data from Open-Meteo. Check your connection.")
+    st.error("❌ Could not load pollen data. Check your connection.")
     st.stop()
 
-df = pd.DataFrame(hourly)
+df         = pd.DataFrame(hourly)
 df["time"] = pd.to_datetime(df["time"])
-df = df.sort_values("time").reset_index(drop=True)
-today = datetime.now().date()
-today_df = df[df["time"].dt.date == today]
+df         = df.sort_values("time").reset_index(drop=True)
+today      = datetime.now().date()
+today_df   = df[df["time"].dt.date == today]
 
 today_vals = {}
 for pollen in selected_pollens:
@@ -193,7 +220,7 @@ for pollen in selected_pollens:
     else:
         today_vals[pollen] = np.nan
 
-with st.spinner("Loading weather data..."):
+with st.spinner("Loading weather..."):
     weather = fetch_weather(home["lat"], home["lon"])
 
 with st.spinner("Loading pharmacies and doctors..."):
@@ -203,22 +230,15 @@ with st.spinner("Loading pharmacies and doctors..."):
 # ── Section 1: Today's Pollen Levels ──────────────────────────────────────────
 st.subheader("🌿 Today's Pollen Levels")
 
-if get_profile()["risk_score"] is not None:
-    score = get_profile()["risk_score"]
-    badge = get_profile()["risk_badge"]
-    st.success(
-        f"🎯 Your personal risk score today is **{score}/10** — **{badge}**. "
-        f"Go to the **🎯 Personalized Risk Score** page for your full breakdown!"
-    )
-
 cols = st.columns(len(selected_pollens))
+pollen_levels = {}
 for i, pollen in enumerate(selected_pollens):
-    val = today_vals.get(pollen, np.nan)
-    pollen_mult = sensitivity_mult(sensitivities.get(pollen, "Medium"))
-    level = get_level(val, THRESHOLDS[pollen], pollen_mult)
+    val         = today_vals.get(pollen, np.nan)
+    mult        = sensitivity_mult(sensitivities.get(pollen, "Medium"))
+    level       = get_level(val, THRESHOLDS[pollen], mult)
+    pollen_levels[pollen] = level
     display_val = f"{val:.0f} gr/m³" if not np.isnan(val) else "N/A"
-    in_season = is_in_season(pollen)
-    season_label = "🟢 In season" if in_season else "⚪ Out of season"
+    season_label = "🟢 In season" if is_in_season(pollen) else "⚪ Out of season"
     with cols[i]:
         st.metric(
             label=f"{pollen}  ·  {season_label}",
@@ -230,8 +250,8 @@ for i, pollen in enumerate(selected_pollens):
 
 st.divider()
 
-# ── Section 2: Live Weather Conditions ────────────────────────────────────────
-st.subheader("🌤️ Live Weather Conditions")
+# ── Section 2: Live Weather + Personal Risk Score ──────────────────────────────
+st.subheader("🌤️ Weather & Your Personal Risk Score")
 
 if weather:
     temp     = weather.get("temperature_2m", "N/A")
@@ -245,34 +265,144 @@ if weather:
     wcol3.metric("🌧️ Rain",        f"{rain} mm")
     wcol4.metric("🌬️ Wind Speed",  f"{wind} km/h")
 
+    # Weather tip
     if isinstance(wind, (int, float)) and wind > 20:
         st.warning(f"🌬️ High wind today ({wind} km/h) — pollen is spreading more than usual!")
     elif isinstance(rain, (int, float)) and rain > 0:
         st.success(f"🌧️ Rain today ({rain}mm) — rain washes pollen out of the air. Good day to go outside!")
     elif isinstance(humidity, (int, float)) and humidity < 40:
-        st.warning(f"☀️ Low humidity today ({humidity}%) — dry air means pollen stays airborne longer.")
+        st.warning(f"☀️ Low humidity ({humidity}%) — dry air means pollen stays airborne longer.")
     elif isinstance(humidity, (int, float)) and humidity > 70:
-        st.info(f"💧 High humidity today ({humidity}%) — pollen tends to clump and fall. Slightly better!")
+        st.info(f"💧 High humidity ({humidity}%) — pollen tends to clump and fall. Slightly better conditions!")
     else:
         st.info("🌤️ Normal weather conditions today — no special weather impact on pollen levels.")
+
+    # ── Personal Risk Score ────────────────────────────────────────────────────
+    st.divider()
+    st.markdown("#### 🎯 Your Personal Risk Score")
+
+    raw_scores   = [LEVEL_SCORES[pollen_levels[p_]] for p_ in selected_pollens]
+    worst_raw    = max(raw_scores)
+    other_scores = sorted(raw_scores, reverse=True)[1:]
+    additional   = sum(s * 0.2 for s in other_scores)
+    avg_raw      = min(worst_raw + additional, 10.0)
+
+    age_factor        = 1.2 if age_group in ["Under 12", "Over 65"] else 1.0
+    asthma_factor     = 1.3 if has_asthma == "Yes" else 1.0
+    medication_factor = {
+        "No medication": 1.0,
+        "Antihistamines (e.g. Cetirizine)": 0.7,
+        "Nasal spray": 0.8,
+        "Both antihistamines + nasal spray": 0.5,
+    }[medication]
+    exposure_factor = 1 + (hours_outside * 0.05)
+
+    weather_factor = 1.0
+    if isinstance(wind,     (int, float)) and wind     > 20: weather_factor += 0.2
+    if isinstance(rain,     (int, float)) and rain     > 0:  weather_factor -= 0.2
+    if isinstance(humidity, (int, float)) and humidity < 40: weather_factor += 0.1
+
+    final_score = min(round(
+        avg_raw * age_factor * asthma_factor * medication_factor
+        * exposure_factor * weather_factor, 1
+    ), 10.0)
+
+    if final_score <= 2:   badge, badge_color = "🟢 Safe Day",        "success"
+    elif final_score <= 4: badge, badge_color = "🟡 Low Risk Day",    "success"
+    elif final_score <= 6: badge, badge_color = "🟠 Caution Day",     "warning"
+    elif final_score <= 8: badge, badge_color = "🔴 High Risk Day",   "error"
+    else:                  badge, badge_color = "🟣 Stay Inside Day", "error"
+
+    set_profile({"risk_score": final_score, "risk_badge": badge})
+
+    col_score, col_badge, col_explain = st.columns([1, 1, 2])
+    with col_score:
+        st.metric(label="Personal Risk Score", value=f"{final_score} / 10")
+        st.progress(int(final_score * 10))
+    with col_badge:
+        st.markdown(f"### {badge}")
+        st.caption("Live pollen + weather + your profile")
+    with col_explain:
+        st.info(
+            f"**How this is calculated:**\n\n"
+            f"- Pollen levels: {', '.join([f'{p_} ({pollen_levels[p_]})' for p_ in selected_pollens])}\n"
+            f"- Sensitivity: **{list(sensitivities.values())[0] if sensitivities else 'Medium'}**\n"
+            f"- Asthma: **{has_asthma}**\n"
+            f"- Medication: **{medication}**\n"
+            f"- Hours outside: **{hours_outside}h**\n"
+            f"- Weather impact: **{'↑ worse' if weather_factor > 1 else '↓ better' if weather_factor < 1 else 'neutral'}**\n"
+            f"- Age factor: **{'Yes' if age_group in ['Under 12', 'Over 65'] else 'No'}**"
+        )
+
+    # Medication reminder
+    st.divider()
+    st.markdown("#### 💊 Medication Reminder")
+    if medication == "No medication":
+        if final_score >= 5:
+            st.warning("⚠️ Your risk score is high. Consider speaking to a doctor about antihistamines like Cetirizine or Loratadine.")
+        else:
+            st.success("✅ No medication needed today based on your risk level.")
+    elif "Antihistamines" in medication:
+        st.success("💊 Take your antihistamine **2 hours before** going outside. Since pollen peaks at 6–10am, aim for **7am** today.")
+    elif medication == "Nasal spray":
+        st.success("🌿 Use your nasal spray **30 minutes** before going outside, every morning.")
+    elif medication == "Both antihistamines + nasal spray":
+        st.success("💊🌿 Antihistamine by **7am**, nasal spray by **8:30am**. Combined treatment reduces your risk by ~50%!")
+
 else:
     st.warning("Could not load weather data.")
 
 st.divider()
 
-# ── Section 3: Switzerland Pollen Map ─────────────────────────────────────────
+# ── Section 3: Best Day This Week ─────────────────────────────────────────────
+st.subheader("📅 Best Day to Go Outside This Week")
+
+df["date"]   = df["time"].dt.date
+daily_scores = []
+mult_avg     = sum(sensitivity_mult(sensitivities.get(p_, "Medium")) for p_ in selected_pollens) / len(selected_pollens)
+
+for d in sorted(df["date"].unique()):
+    day_data = df[df["date"] == d]
+    day_vals = {}
+    for pollen in selected_pollens:
+        api_key = POLLEN_PARAMS[pollen]["api"]
+        if api_key in day_data.columns:
+            peak = pd.to_numeric(day_data[api_key], errors="coerce").max()
+            day_vals[pollen] = float(peak) if not np.isnan(peak) else 0.0
+        else:
+            day_vals[pollen] = 0.0
+    day_levels = {p_: get_level(day_vals[p_], THRESHOLDS[p_], mult_avg) for p_ in selected_pollens}
+    day_raw    = sum([LEVEL_SCORES[day_levels[p_]] for p_ in selected_pollens]) / len(selected_pollens)
+    daily_scores.append({
+        "date":  d,
+        "label": pd.Timestamp(d).strftime("%A %d %b"),
+        "score": round(day_raw, 1),
+    })
+
+best_day  = min(daily_scores, key=lambda x: x["score"])
+worst_day = max(daily_scores, key=lambda x: x["score"])
+
+col_best, col_worst = st.columns(2)
+with col_best:
+    st.success(f"**✅ Best day: {best_day['label']}**\n\nPollen score: {best_day['score']}/10\n\nGreat day for outdoor activities!")
+with col_worst:
+    st.error(f"**⚠️ Worst day: {worst_day['label']}**\n\nPollen score: {worst_day['score']}/10\n\nTry to stay indoors if possible.")
+
+st.divider()
+
+# ── Section 4: Switzerland Pollen Map ─────────────────────────────────────────
 st.subheader("🗺️ Switzerland Pollen Map")
 
 @st.cache_data(ttl=3600)
-def fetch_all_stations(pollen_vars: tuple) -> dict:
+def fetch_all_stations(pollen_vars):
     results = {}
     for city, info in STATIONS.items():
         data = fetch_pollen(info["lat"], info["lon"], list(pollen_vars))
         if data:
-            tdf = pd.DataFrame(data)
+            tdf        = pd.DataFrame(data)
             tdf["time"] = pd.to_datetime(tdf["time"])
             today_data = tdf[tdf["time"].dt.date == datetime.now().date()]
-            city_vals = {}
+            city_vals  = {}
             for var in pollen_vars:
                 if var in today_data.columns:
                     peak = pd.to_numeric(today_data[var], errors="coerce").max()
@@ -282,102 +412,78 @@ def fetch_all_stations(pollen_vars: tuple) -> dict:
             results[city] = city_vals
     return results
 
-with st.spinner("Fetching map data for all Swiss cities…"):
+with st.spinner("Fetching map data…"):
     all_data = fetch_all_stations(tuple(api_vars))
 
 def build_map(weather=None, pharmacies=[], doctors=[]):
-    m = folium.Map(
-        location=[46.8, 8.2], zoom_start=8,
-        tiles="CartoDB positron", control_scale=True,
-        min_zoom=7, max_zoom=13, max_bounds=True,
-    )
+    m = folium.Map(location=[46.8, 8.2], zoom_start=8, tiles="CartoDB positron", control_scale=True)
     m.fit_bounds([[45.8, 5.9], [47.9, 10.5]])
-    m.options['minZoom'] = 7
     heat_pts = []
     for city, info in STATIONS.items():
         city_vals = all_data.get(city, {})
-        total = 0.0
-        worst = "none"
+        total, worst = 0.0, "none"
         for pollen in selected_pollens:
             api_key = POLLEN_PARAMS[pollen]["api"]
-            val = city_vals.get(api_key, 0.0)
-            total += val
-            pollen_mult = sensitivity_mult(sensitivities.get(pollen, "Medium"))
-            lv = get_level(val, THRESHOLDS[pollen], pollen_mult)
+            val     = city_vals.get(api_key, 0.0)
+            total  += val
+            mult    = sensitivity_mult(sensitivities.get(pollen, "Medium"))
+            lv      = get_level(val, THRESHOLDS[pollen], mult)
             if LEVEL_ORDER.index(lv) > LEVEL_ORDER.index(worst):
                 worst = lv
         heat_pts.append([info["lat"], info["lon"], min(total, 400)])
-        clr = level_color(worst)
-        popup_html = (
-            f"<b>{city}</b> ({info['canton']})<br>"
-            f"<b style='color:{clr}'>{worst.upper()}</b><br>"
-            f"Combined: {total:.0f} gr/m³"
-        )
+        clr        = level_color(worst)
+        popup_html = f"<b>{city}</b> ({info['canton']})<br><b style='color:{clr}'>{worst.upper()}</b><br>Combined: {total:.0f} gr/m³"
         folium.CircleMarker(
             location=[info["lat"], info["lon"]], radius=13,
-            color="white", weight=2, fill=True,
-            fill_color=clr, fill_opacity=0.85,
+            color="white", weight=2, fill=True, fill_color=clr, fill_opacity=0.85,
             popup=folium.Popup(popup_html, max_width=200),
             tooltip=f"{city}: {worst}",
         ).add_to(m)
 
-    HeatMap(
-        heat_pts, radius=55, blur=40, min_opacity=0.3,
-        gradient={"0.0": "#2d6a4f", "0.35": "#B8935A", "0.65": "#C4532A", "1.0": "#5b21b6"},
-    ).add_to(m)
+    HeatMap(heat_pts, radius=55, blur=40, min_opacity=0.3,
+            gradient={"0.0": "#2d6a4f", "0.35": "#B8935A", "0.65": "#C4532A", "1.0": "#5b21b6"}).add_to(m)
 
     weather_popup = f"<b>📍 {selected_city}</b><br>"
     if weather:
-        temp     = weather.get("temperature_2m", "N/A")
-        humidity = weather.get("relative_humidity_2m", "N/A")
-        wind     = weather.get("wind_speed_10m", "N/A")
-        rain     = weather.get("precipitation", "N/A")
-        weather_popup += f"🌡️ {temp}°C &nbsp; 💧 {humidity}%<br>🌬️ {wind} km/h &nbsp; 🌧️ {rain}mm"
-
+        weather_popup += (
+            f"🌡️ {weather.get('temperature_2m','N/A')}°C &nbsp; "
+            f"💧 {weather.get('relative_humidity_2m','N/A')}%<br>"
+            f"🌬️ {weather.get('wind_speed_10m','N/A')} km/h &nbsp; "
+            f"🌧️ {weather.get('precipitation','N/A')}mm"
+        )
     folium.Marker(
         [home["lat"], home["lon"]],
-        tooltip=f"📍 {selected_city} — click for weather",
+        tooltip=f"📍 {selected_city}",
         popup=folium.Popup(weather_popup, max_width=250),
         icon=folium.Icon(color="green", icon="home", prefix="fa"),
     ).add_to(m)
 
     for ph in pharmacies:
-        folium.Marker(
-            [ph["lat"], ph["lon"]],
-            tooltip=ph["name"],
-            popup=folium.Popup(f"<b>💊 {ph['name']}</b><br>📍 {ph['address']}", max_width=200),
-            icon=folium.Icon(color="red", icon="plus", prefix="fa"),
-        ).add_to(m)
-
+        folium.Marker([ph["lat"], ph["lon"]], tooltip=ph["name"],
+                      popup=folium.Popup(f"<b>💊 {ph['name']}</b><br>📍 {ph['address']}", max_width=200),
+                      icon=folium.Icon(color="red", icon="plus", prefix="fa")).add_to(m)
     for d in doctors:
-        folium.Marker(
-            [d["lat"], d["lon"]],
-            tooltip=d["name"],
-            popup=folium.Popup(f"<b>🩺 {d['name']}</b><br>📍 {d['address']}", max_width=200),
-            icon=folium.Icon(color="blue", icon="user-md", prefix="fa"),
-        ).add_to(m)
-
+        folium.Marker([d["lat"], d["lon"]], tooltip=d["name"],
+                      popup=folium.Popup(f"<b>🩺 {d['name']}</b><br>📍 {d['address']}", max_width=200),
+                      icon=folium.Icon(color="blue", icon="user-md", prefix="fa")).add_to(m)
     return m
 
 col_tog1, col_tog2 = st.columns(2)
 with col_tog1:
-    show_pharmacies = st.toggle("💊 Show pharmacies on map", value=False)
+    show_pharmacies = st.toggle("💊 Show pharmacies", value=False)
 with col_tog2:
-    show_doctors = st.toggle("🩺 Show doctors on map", value=False)
+    show_doctors = st.toggle("🩺 Show doctors", value=False)
 
 st_folium(
-    build_map(
-        weather=weather,
-        pharmacies=pharmacies if show_pharmacies else [],
-        doctors=doctors if show_doctors else [],
-    ),
-    height=460,
-    use_container_width=True
+    build_map(weather=weather,
+              pharmacies=pharmacies if show_pharmacies else [],
+              doctors=doctors if show_doctors else []),
+    height=460, use_container_width=True
 )
 
 st.divider()
 
-# ── Section 4: 5-Day Pollen Forecast ──────────────────────────────────────────
+# ── Section 5: 5-Day Forecast ──────────────────────────────────────────────────
 st.subheader("📈 5-Day Pollen Forecast")
 
 fig = go.Figure()
@@ -395,11 +501,8 @@ for pollen in selected_pollens:
         mode="lines",
     ))
 
-fig.add_vline(
-    x=datetime.now().timestamp() * 1000,
-    line_dash="dash", line_color="#adb5bd",
-    annotation_text="Now", annotation_position="top right",
-)
+fig.add_vline(x=datetime.now().timestamp() * 1000, line_dash="dash", line_color="#adb5bd",
+              annotation_text="Now", annotation_position="top right")
 
 t = THRESHOLDS[selected_pollens[0]]
 fig.add_hrect(y0=0,    y1=t[0], fillcolor="green",  opacity=0.03, line_width=0)
@@ -412,18 +515,17 @@ fig.update_layout(
     xaxis=dict(title="", gridcolor="#f0f0f0"),
     yaxis=dict(title="Pollen (grains/m³)", gridcolor="#f0f0f0"),
     plot_bgcolor="white", paper_bgcolor="white",
-    margin=dict(l=10, r=10, t=40, b=10),
-    height=360,
+    margin=dict(l=10, r=10, t=40, b=10), height=360,
 )
 st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 
-# ── Section 5: Nearby Pharmacies & Doctors ────────────────────────────────────
+# ── Section 6: Nearby Pharmacies & Doctors ────────────────────────────────────
 st.subheader("💊 Nearby Pharmacies & Doctors")
 st.caption(f"Live data from OpenStreetMap · within 5km of {selected_city}")
 
-show_list = st.toggle("📋 Show list of pharmacies & doctors", value=False)
+show_list = st.toggle("📋 Show list", value=False)
 if show_list:
     col_pharm, col_doc = st.columns(2)
     with col_pharm:
