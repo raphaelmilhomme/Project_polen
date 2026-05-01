@@ -41,7 +41,7 @@ def detect_city():
         return "Zürich"
     except:
         return "Zürich"
-#tries to detect the user's city through their IP adress, if it fails or the city is not in the list, the function returns Zurich by default. ttl=3600 means that this result is saved for an hour
+#tries to detect the user's city through their IP address, if it fails or the city is not in the list, the function returns Zurich by default. ttl=3600 means that this result is saved for an hour
 
 @st.cache_data(ttl=3600)
 def fetch_pollen(lat, lon, pollen_vars):
@@ -152,7 +152,7 @@ with st.sidebar:
     default_idx = city_list.index(saved_city)
 
     selected_city = st.selectbox("📍 Your location", options=city_list, index=default_idx)
-#tries to find your city with your IP adress and enables you to correct it thanks to a dropdown 
+#tries to find your city with your IP address and enables you to correct it thanks to a dropdown 
     st.divider()
     st.markdown("**👤 Your profile**")
 
@@ -292,7 +292,7 @@ if weather:
     wcol2.metric("💧 Humidity",    f"{humidity}%")
     wcol3.metric("🌧️ Rain",        f"{rain} mm")
     wcol4.metric("🌬️ Wind Speed",  f"{wind} km/h")
-#shows temperature, humidity, rain and wind as 4 cards based on the Open Weather Meteo API
+#shows temperature, humidity, rain and wind as 4 cards based on the Open Meteo Weather API
 
     if isinstance(wind, (int, float)) and wind > 20:
         st.warning(f"🌬️ High wind today ({wind} km/h) — pollen is spreading more than usual!")
