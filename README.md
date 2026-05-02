@@ -11,7 +11,8 @@ Prerequisites:
     -plotly: used to plot graphs, here it is the 5-day pollen forecast with one bar per selected pollen
     -onnxruntime: loads and runs the plant identification machine learning model
     -pillow: opens plant photos, converts them into RGB file format with 300x 300 pixels before feeding them to the ML model
-    -supabase: connecting the Community page to the database so we can save the comments, pollen sightings, tips...
+    -suppabase: Supabase is an online database that stores the community data (tips, reports, sightings and comments) permanently in the cloud, so that all users see the same information and nothing is lost when the page reloads.
+
 
 -You can install them all at once with the command: pip install -r requirements.txt
 -Run the app: streamlit run Home.py
@@ -19,6 +20,10 @@ Prerequisites:
 Project description:
 -BlessYou is a real time pollen forecast web app built for people who suffer of pollen allergies in Switzerland, especially in cities
 -the website is organized/ built like this:
+    
+    User Profile System (user_profile.py):
+    A shared Python file imported by every page that stores the user's personal information (city, allergies, sensitivity, age, asthma, medication) in st.session_state. This means the user only enters their information once, on the Home page or through the Allergy Quiz,and it is automatically used across all pages. For example, the city selected on the Home page is used in the Community page, and the risk badge calculated on the Home page appears next to community posts.
+    
     Home Page:
         -You can enter your pollen allergies on the left with a choice of 5 different ones (Birch Grass, Mugwort, Hazel and Alder)
         -then you can enter your sensitivity level to each pollen
