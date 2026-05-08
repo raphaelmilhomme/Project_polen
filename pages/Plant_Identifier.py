@@ -142,7 +142,7 @@ with st.sidebar: # The left panel with the BlessYou title and model information.
     st.caption("MODEL: EfficientNetB3")
     st.caption("SPECIES: 93 Swiss plants")
     st.caption("ACCURACY: Top-1 ~82%")
-    st.caption("ACCURACY: Top-1 ~95%")
+    st.caption("ACCURACY: Top-5 ~95%")
     st.caption("SOURCE: PlantCLEF + iNaturalist")
 
 
