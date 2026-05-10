@@ -7,7 +7,7 @@ Pipeline:
     3. Export the best model to ONNX format for deployment on Streamlit
     
 Model: EfficientNetB3 
-Min photos: 100 | Epochs: 75 
+Min photos: 100 | Epochs: 50 
 Source: I used CLaude Sonnet 4.6 to find the list of Swiss plant and to help me develop the code
 Dependencies: PlantCLEF Data base Kaggle + iNaturalist (already downloaded from an API see doc: dataset_iNaturalist_API.py)
 Note: This training script was run on Kaggle (external platform) and does not run as part of the Streamlit app. Its only output used by the app is model.onnx,
@@ -336,7 +336,7 @@ callbacks = [
 
 history = model.fit(
     train_data,
-    epochs=75,
+    epochs=50,
     validation_data=val_data,
     callbacks=callbacks
 )
