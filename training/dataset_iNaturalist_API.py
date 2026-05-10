@@ -1,8 +1,20 @@
+"""
+BlessYou — iNaturalist Data Collector
+Note: This script runs on Kaggle (CPU, no GPU needed) as a standalone notebook.
+It does not run as part of the Streamlit app. Its only purpose is to build the image dataset used by blessyou_final_training.py to train the ML model.
 
-# BlessYou — iNaturalist Data Collector
-# Downloads up to 200 photos per species from iNaturalist
-# Filters by Switzerland (place_id=6753) + research grade
-# Save as Kaggle Dataset after running!
+Purpose:
+- Downloads up to 200 photos per species from iNaturalist, URL: https://api.inaturalist.org/v1/observations
+- Filters by Switzerland (place_id=6753) + research grade
+- Output is saved to /kaggle/working/inaturalist_swiss/ and attached as input in the training notebook (blessyou_final_training.py).
+
+Pipeline position:
+    dataset_iNaturalist_API.py -> blessyou_final_training.py -> model.onnx -> Plant_Identifier.py
+
+Requirements: requests, pathlib, concurrent.futures, time, os
+
+Source; I found the URL, try extract information and image by hand, but needed the help of Claude because I was not able to put the rigth filters that will fit with the training requirements
+Dependencies: Used in blessyou_final_training.py """
 
 
 import os
@@ -11,13 +23,28 @@ import requests # to call the iNaturalist API
 from pathlib import Path # handle file paths cleanly
 from concurrent.futures import ThreadPoolExecutor # download multiple images in parallel.
 
-# Settings 
-OUTPUT_DIR   = "/kaggle/working/inaturalist_swiss" # where to save the omage on kaggle
-PHOTOS_MAX   = 200   # max photos per species
-PLACE_ID     = 6753  # Switzerland
-SLEEP        = 0.3   # seconds between API calls (be nice to the API)
 
-# Species list
+
+""" Settings 
+OUTPUT_DIR  where to save the omage on kaggle
+PHOTOS_MAX regulates max photos per species
+PLACE_ID: iNaturalist internal ID for Switzerland
+SLEEP : pause between API calls to respect rate limits
+"""
+
+OUTPUT_DIR   = "/kaggle/working/inaturalist_swiss" 
+PHOTOS_MAX   = 200  
+PLACE_ID     = 6753 
+SLEEP        = 0.3   
+
+
+
+""" 
+Species list: 
+272 Swiss plant species  key allergenic species.
+This list is intentionally broader than the final 93 species used by the model because some species will not have enough photos and will be filtered out during training.
+""" 
+
 CLASS_NAMES = [
     'Abies alba','Acer campestre','Acer platanoides','Acer pseudoplatanus',
     'Achillea millefolium','Aesculus hippocastanum','Agrimonia eupatoria',
@@ -106,8 +133,26 @@ CLASS_NAMES = [
     'Viola odorata','Viola tricolor',
 ]
 
-# Helper functions, Calls the iNaturalist API to get photo URLs for one species.
+
+
 def get_photo_urls(taxon_name, max_photos=200, place_id=6753):
+    
+    """ Helper functions, Calls the iNaturalist API to get photo URLs for one species.
+ 
+    Paginates through results 50 at a time until enough URLs are collected.
+    Only research-grade observations (community-verified) with photos are included. 
+    Each URL is converted from square thumbnail to medium size for better image quality (square=75px, medium=~500px).
+ 
+    Args:
+        taxon_name (str): Scientific name e.g. 'Betula pendula'
+        max_photos (int): Maximum number of URLs to return
+        place_id (int)  : iNaturalist place ID -- 6753 = Switzerland
+ 
+    Returns:
+        list[str]: List of medium-size image URLs
+    """
+
+    
     urls = []
     page = 1
     per_page = 50 # 50 at a time until it has enough URLs. 
@@ -161,8 +206,17 @@ def get_photo_urls(taxon_name, max_photos=200, place_id=6753):
     return urls
 
 
-def download_image(args): # Downloads a single image from a URL and saves it as a .jpg
-    """Download a single image."""
+
+def download_image(args): 
+ """
+    Download a single image from a URL and save it as a JPEG file.
+ 
+    Args:
+        args (tuple): (url: str, filepath: str)
+    Returns:
+        bool: True if download succeeded, False otherwise
+ """
+    
     url, filepath = args
     try:
         r = requests.get(url, timeout=15)
@@ -172,17 +226,36 @@ def download_image(args): # Downloads a single image from a URL and saves it as 
             return True
     except Exception:
         pass
-    return False
+    return False # Never raises an exception -- returns False on failure so that  one bad download does not interrupt the entire batch.
 
 
-def collect_species(taxon_name, output_dir, max_photos=200): #Manages the full collection for one species
-    """Collect photos for one species."""
-    # Create folder 
+def collect_species(taxon_name, output_dir, max_photos=200): 
+    """
+    Collect and download photos for one plant species.
+ 
+    Creates a dedicated subfolder, checks existing photos to allow then downloads all images in parallel using 5 concurrent threads.
+ 
+    Args:
+        taxon_name (str): Scientific name of the species
+        output_dir (str): Root folder where species subfolders are created
+        max_photos (int): Target number of photos to collect
+ 
+    Returns:
+        int: Total number of photos available after collection
+ 
+    Dependencies:
+        get_photo_urls()   -- fetches image URLs from iNaturalist
+        download_image()   -- downloads each individual image
+        ThreadPoolExecutor -- parallel downloads (max_workers=5)
+        pathlib.Path       -- folder creation and file checks
+    """
+
+    
     folder_name = taxon_name.replace(" ", "_").replace(".", "")
     species_dir = Path(output_dir) / taxon_name
     species_dir.mkdir(parents=True, exist_ok=True)
 
-    # Skip if already enough photos
+    #  Check existing photos to allow resuming an interrupted collection
     existing = list(species_dir.glob("*.jpg"))
     if len(existing) >= max_photos:
         print(f"  SKIP {taxon_name}: {len(existing)} photos already")
@@ -190,20 +263,20 @@ def collect_species(taxon_name, output_dir, max_photos=200): #Manages the full c
 
     needed = max_photos - len(existing)
 
-    # Get URLs
+    # Request slightly more URLs than needed to account for download failures
     urls = get_photo_urls(taxon_name, max_photos=needed + 20)
     if not urls:
         print(f"  NO PHOTOS found for {taxon_name}")
         return 0
 
-    # Prepare download tasks
+    # Prepare download tasks, only download files that do not already exist
     tasks = []
     for i, url in enumerate(urls[:needed]):
         filepath = species_dir / f"inat_{i:04d}.jpg"
         if not filepath.exists():
             tasks.append((url, str(filepath)))
 
-    # Download in parallel
+    # Download in parallel using 5 threads
     downloaded = 0
     with ThreadPoolExecutor(max_workers=5) as executor:
         results = list(executor.map(download_image, tasks))
@@ -214,6 +287,11 @@ def collect_species(taxon_name, output_dir, max_photos=200): #Manages the full c
     return total
 
 
+"""
+Main collection loop
+Iterates through all 272 species, calls collect_species for each,
+and waits SLEEP seconds between species to respect the API rate limits
+"""
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
