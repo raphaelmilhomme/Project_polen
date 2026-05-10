@@ -8,7 +8,7 @@ Pipeline:
     
 Model: EfficientNetB3 
 Min photos: 100 | Epochs: 75 
-Source: I used CLaude to find the list of Swiss plant and to help me develop the code
+Source: I used CLaude Sonnet 4.6 to find the list of Swiss plant and to help me develop the code
 Dependencies: PlantCLEF Data base Kaggle + iNaturalist (already downloaded from an API see doc: dataset_iNaturalist_API.py), tensorflow, tf2onnx, numpy, os, json, shutil
 Note: This training script was run on Kaggle (external platform) and does not run as part of the Streamlit app. Its only output used by the app is model.onnx,
 which is the trained model loaded by Plant_Identifier.py at inference time."""
