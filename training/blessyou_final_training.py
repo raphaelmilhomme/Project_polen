@@ -1,8 +1,17 @@
-
-# BlessYou — Final Training Notebook
-# Datasets: PlantCLEF + iNaturalist (already downloaded)
-# Model: EfficientNetB3
-# Min photos: 100 | Epochs: 75
+"""
+BlessYou — Final Training 
+This script trains a plant identification model for the BlessYou Swiss Pollen app.
+Pipeline:
+    1. Combine PlantCLEF and iNaturalist datasets into a single folder
+    2. Train EfficientNetB3 using transfer learning in two phases
+    3. Export the best model to ONNX format for deployment on Streamlit
+    
+Model: EfficientNetB3 
+Min photos: 100 | Epochs: 75 
+Source: I used CLaude to find the list of Swiss plant and to help me develop the code
+Dependencies: PlantCLEF Data base Kaggle + iNaturalist (already downloaded from an API see doc: dataset_iNaturalist_API.py), tensorflow, tf2onnx, numpy, os, json, shutil
+Note: This training script was run on Kaggle (external platform) and does not run as part of the Streamlit app. Its only output used by the app is model.onnx,
+which is the trained model loaded by Plant_Identifier.py at inference time."""
 
 
 import os, json, shutil # os and shtil for files managemet
@@ -19,15 +28,20 @@ print(f"TensorFlow: {tf.__version__}")
 print(f"GPU: {len(tf.config.list_physical_devices('GPU')) > 0}")
 
 # ── Paths # define where the data set are located on Kaggle
-PLANCLEF_PATH  = "/kaggle/input/datasets/datajameson/planclef/training"
-INAT_PATH      = "/kaggle/input/notebookf1f2bfe39e/inaturalist_swiss"
-COMBINED_PATH  = "/kaggle/working/combined_dataset"
+PLANCLEF_PATH  = "/kaggle/input/datasets/datajameson/planclef/training" # location of plant CEF on Kaggle
+INAT_PATH      = "/kaggle/input/notebookf1f2bfe39e/inaturalist_swiss" # location of iNaturalist images collected via the API notebook
+COMBINED_PATH  = "/kaggle/working/combined_dataset" # working folder where both datasets are merged
 OUTPUT_PATH    = "/kaggle/working" # where to save the combined dataset and the final model 
 IMG_SIZE       = 300 # size compatible with the model
 BATCH_SIZE     = 32 # number of image per batch
 MIN_PHOTOS     = 100 # minimum photo require to enter into the model
 
 # ── Species list ──────────────────────────────────────────────
+""" plantes_suisses 272 common Swiss plant
+plantes_allergenes: 38 key allergenes species in Switzerland
+TOUTES_ESPECES   : merged and deduplicated list of both, sorted alphabetically
+"""
+
 plantes_suisse = [
     'Abies alba','Acer campestre','Acer platanoides','Acer pseudoplatanus',
     'Achillea millefolium','Aesculus hippocastanum','Agrimonia eupatoria',
@@ -132,16 +146,20 @@ plantes_allergenes = [
     'Achillea millefolium','Matricaria chamomilla',
 ]
 
-TOUTES_ESPECES = sorted(set(plantes_suisse + plantes_allergenes)) 
+TOUTES_ESPECES = sorted(set(plantes_suisse + plantes_allergenes)) # Merge both lists and remove duplicates
 
-# 
-# STEP 1: Combine PlantCLEF + iNaturalist
-# 
+
+"""
+STEP 1: Combine PlantCLEF + iNaturalist
+For each species in TOUTES_ESPECES, we create a single folder inside COMBINED_PATH and copy images from both PlantCLEF and iNaturalist into it
+Only species with at least MIN_PHOTOS (100) total images are kept for training.
+The final list is saved to class_names.json
+"""
 
 os.makedirs(COMBINED_PATH, exist_ok=True) 
 plantes_finales = []
 
-for espece in TOUTES_ESPECES: # for each species we created a combne dataset
+for espece in TOUTES_ESPECES: # for each species we created a combine dataset
     dest = os.path.join(COMBINED_PATH, espece)
     os.makedirs(dest, exist_ok=True)
     count = 0
@@ -156,7 +174,7 @@ for espece in TOUTES_ESPECES: # for each species we created a combne dataset
             )
             count += 1
 
-    # Copy iNaturalist
+    # Copy iNaturalist, if you want to see how photos have been download from API, look at the files: dataset_iNaturalist_API.py
     inat_dir = os.path.join(INAT_PATH, espece)
     if os.path.exists(inat_dir):
         for f in os.listdir(inat_dir):
@@ -166,11 +184,15 @@ for espece in TOUTES_ESPECES: # for each species we created a combne dataset
             )
             count += 1
 
-    if count >= MIN_PHOTOS: #count wether there is minimum 100 photos otherwize, not added in zhe plantes_finals
+    if count >= MIN_PHOTOS: #count wether there is minimum 100 photos otherwize, not added in the plantes_finals
         plantes_finales.append(espece)
    
 plantes_finales = sorted(plantes_finales)
 print(f"\nFinal species: {len(plantes_finales)}")
+
+"""
+Save class names in the exact order used by the model
+This file must be used to update CLASS_NAMES in Plant_Identifier.p """
 
 with open(f"{OUTPUT_PATH}/class_names.json", "w") as f: # final list is save in class_names.json which is primordial because it defines the exact order of classes the model learned.
     json.dump(plantes_finales, f, indent=2)
@@ -179,6 +201,14 @@ print("class_names.json saved!")
 
 # STEP 2: Train EfficientNetB3
 
+
+
+""" 
+We use ImageDataGenerator for two purposes:
+1. Normalization: rescale pixel values from [0-255] to [0-1]
+2. Data augmentation: artificially increase dataset variety, through random rotations (40deg), horizontal flip, zoom, brightness shift, width/height shift, shear and channel shift.
+3. 80% of images go to training, 20% to validation (validation_split=0.2).
+"""
 
 datagen = ImageDataGenerator(
     rescale=1./255,
@@ -192,8 +222,8 @@ datagen = ImageDataGenerator(
     brightness_range=[0.7, 1.3],
     channel_shift_range=20.0,
     fill_mode='nearest'
-) # image data generator handles two things: normalizing pixels and data augmentation to artificially create more variety from existing photos.
-# The augmentations include random rotation up to 40 degrees, horizontal flipping, zooming, brightness changes and pixel shifting. 80% of photos go to training and 20% to validation
+) 
+
 
 train_data = datagen.flow_from_directory(
     COMBINED_PATH,
@@ -218,35 +248,63 @@ print(f"Training: {train_data.samples} images")
 print(f"Validation: {val_data.samples} images")
 print(f"Classes: {NUM_CLASSES}")
 
+
+""" 
+Model architecture:
+- Base: EfficientNetB3 is a pre-trained on ImageNet and I used it because it is efficient with small number of datas.
+- Head: custom layers added on top to learn plant-specific classification.
+"""
+
 base_model = EfficientNetB3(
     weights='imagenet',
     include_top=False,
     input_shape=(IMG_SIZE, IMG_SIZE, 3)
-) # EfficientNetB3 is a pre-trained on ImageNet and I used it because it is efficient with small number of datas.
+) 
+
+# Phase 1: Train head; In Phase 1, the base is frozen (trainable=False) so only the new head is trained.
 base_model.trainable = False
 
-#  The head consists of a GlobalAveragePooling2D to compress features, a BatchNormalization to stabilize training, two Dense layers with relu activation to learn plant-specific patterns, and two Dropout layers to prevent overfitting.
+
 x = base_model.output
-x = layers.GlobalAveragePooling2D()(x)
-x = layers.BatchNormalization()(x)
-x = layers.Dense(512, activation='relu')(x)
-x = layers.Dropout(0.4)(x)
-x = layers.Dense(256, activation='relu')(x)
-x = layers.Dropout(0.3)(x)
-output = layers.Dense(NUM_CLASSES, activation='softmax')(x)
+x = layers.GlobalAveragePooling2D()(x) # compresses spatial features into a 1D vector
+x = layers.BatchNormalization()(x) # stabilizes training and speeds up convergence
+x = layers.Dense(512, activation='relu')(x) #learns complex plant-specific patterns
+x = layers.Dropout(0.4)(x) # randomly disables 40% of neurons to prevent overfitting
+x = layers.Dense(256, activation='relu')(x) #  further refines the learned features
+x = layers.Dropout(0.3)(x) # additional regularization
+output = layers.Dense(NUM_CLASSES, activation='softmax')(x) # outputs a probability for each species
 
 model = Model(inputs=base_model.input, outputs=output)
 print(f"Parameters: {model.count_params():,}")
 
-# Phase 1: Train head; In Phase 1, the base is frozen (trainable=False) so only the new head is trained.
+
+"""
+Phase 1 — Train head only (10 epochs, lr=0.001)
+The base model is frozen (see before)
+This phase quickly teaches the model the basics of plant recognition using the pretrained ImageNet features as a foundation.
+"""
+
+
 model.compile(
-    optimizer=Adam(learning_rate=0.001),
-    loss='categorical_crossentropy',
-    metrics=['accuracy', TopKCategoricalAccuracy(k=5, name='top5_acc')]
+    optimizer=Adam(learning_rate=0.001), # Adam stands for Adaptive Moment Estimation = optimization algorithm that updates the model weights after each batch of images.
+    loss='categorical_crossentropy', # The loss function measures how wrong the model is,  it heavily penalizes wrong predictions made with high confidence.
+    metrics=['accuracy', TopKCategoricalAccuracy(k=5, name='top5_acc')] # The metrics we track during training.
 )
 model.fit(train_data, epochs=10, validation_data=val_data)
 
-# Phase 2: Full fine-tuning; The entire model is unfrozen (trainable=True) and retrained with a much lower learning rate of 0.0001 to avoid destroying the pretrained weights.
+
+
+
+""" 
+Phase 2: Full fine-tuning; 
+The entire model is unfrozen (trainable=True) and retrained with a much lower learning rate of 0.0001 to avoid destroying the pretrained weights.
+Three callbacks are used:
+- ModelCheckpoint: saves the model whenever val_accuracy improves
+- EarlyStopping: stops training if no improvement for 15 epochs (avoids wasting GPU)
+- ReduceLROnPlateau: halves the learning rate if val_loss plateaus for 4 epochs
+"""
+
+
 base_model.trainable = True
 model.compile(
     optimizer=Adam(learning_rate=0.0001),
@@ -274,7 +332,7 @@ callbacks = [
         min_lr=1e-8,
         verbose=1
     )
-] # ModelCheckpoint saves the best model automatically, EarlyStopping stops training if accuracy stops improving for 15 epochs, and ReduceLROnPlateau halves the learning rate if the loss plateaus for 4 epochs.
+]
 
 history = model.fit(
     train_data,
@@ -285,8 +343,11 @@ history = model.fit(
 
 
 
-# STEP 3: Export ONNX; The best saved model is loaded and converted from Keras format to ONNX format using tf2onnx
-
+""""
+STEP 3: Export ONNX; The best saved model is loaded and converted from Keras format to ONNX format using tf2onnx
+The output model.onnx is what gets pushed to GitHub and loaded by
+Plant_Identifier.py via onnxruntime.InferenceSession().
+"""
 
 import subprocess
 subprocess.run(["pip", "install", "tf2onnx", "-q"])
