@@ -362,6 +362,6 @@ with tab_species:
                 common = COMMON_NAMES.get(sci, "")
                 st.caption(f"✅ **{sci}** - {common}")
 
-# Footer Legal disclaimer at the bottom of the page.
+# Footer 
 st.divider()
-st.caption("🌻 BlessYou · Plant identification powered by EfficientNetB3 · Not a substitute for professional botanical advice")
+st.caption("🌻 BlessYou · Plant identification powered by EfficientNetB3")
