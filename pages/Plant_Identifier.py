@@ -128,8 +128,8 @@ COMMON_NAMES = {
 
 """
 Reverse lookup: common name (lowercase) -> scientific name
-Use in the Search part
-"""
+Use in the Search part """
+
 COMMON_TO_SCI = {v.lower(): k for k, v in COMMON_NAMES.items()} # associate the scientific and english common name of my 93 plants.
 
 """
