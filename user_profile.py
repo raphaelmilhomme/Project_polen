@@ -1,7 +1,22 @@
-# user_profile.py — shared across all pages via st.session_state
-#contains all the dictionaries, constants and functions used by the other pages
+"""
+user_profile.py
+
+Contains all the dictionaries, constants and functions used by the other pages.
+
+Dependencies:
+- none
+
+Authors: Raphael Milhomme
+Date: 11 May 2026
+
+Sources:
+    - Claude (Sonnet 4.6): Built collaboratively with Claude as a coding partner 
+    for writing and debugging the code.
+"""
+
 import streamlit as st
 
+#dictionary of the 15 swiss cities analyzed on this website/ that can be selected
 STATIONS = {
     "Zürich":     {"canton": "ZH", "lat": 47.376, "lon": 8.538},
     "Bern":       {"canton": "BE", "lat": 46.948, "lon": 7.447},
@@ -18,27 +33,27 @@ STATIONS = {
     "Chur":       {"canton": "GR", "lat": 46.852, "lon": 9.533},
     "Frauenfeld": {"canton": "TG", "lat": 47.556, "lon": 8.898},
     "Bellinzona": {"canton": "TI", "lat": 46.193, "lon": 9.023},}
-#dictionary of the 15 swiss cities analyzed on this website/ that can be selected
 
+#dictionary mapping each pollen to its Open-Meteo API variable name, assigning it a color and season. Note: Hazel and Alder share the same API variable (alder_pollen)
 POLLEN_PARAMS = {
     "Birch":   {"api": "birch_pollen",   "color": "#C4532A", "season": "Mar–May"},
     "Grass":   {"api": "grass_pollen",   "color": "#2d6a4f", "season": "May–Aug"},
     "Mugwort": {"api": "mugwort_pollen", "color": "#7B6FA0", "season": "Jul–Sep"},
     "Hazel":   {"api": "alder_pollen",   "color": "#B8935A", "season": "Jan–Mar"},
     "Alder":   {"api": "alder_pollen",   "color": "#6B8F6C", "season": "Feb–Apr"},}
-#dictionary mapping each pollen to its Open-Meteo API variable name, assigning it a color and season. Note: Hazel and Alder share the same API variable (alder_pollen)
 
+#Pollen levels in grains per m3 for each pollen (none to low, low to moderate, moderate to high, high to very high)
 THRESHOLDS = {
     "Birch":   [1, 10,  50, 200],
     "Grass":   [1, 10,  50, 200],
     "Mugwort": [1,  5,  20,  80],
     "Hazel":   [1, 10,  50, 150],
     "Alder":   [1, 10,  50, 150]}
-#Pollen levels in grains per m3 for each pollen (none to low, low to moderate, moterate to high, high to very high)
 
-LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
 #list of severity levels used to compare pollen levels
+LEVEL_ORDER = ["none", "low", "moderate", "high", "very high"]
 
+#default user profile values for a new user who hasn't entered any information in their profile yet
 DEFAULT_PROFILE = {
     "city":          "Zürich",
     "pollens":       [],
@@ -51,24 +66,36 @@ DEFAULT_PROFILE = {
     "risk_badge":    None,
     "setup_done":    False,
     "quiz_done":     False}
-#default user profile values for a new user who hasn't entered any information in their profile yet
+
 
 def init_profile():
+    """
+    creates the profile if it doesn't already exist
+    """
     if "profile" not in st.session_state:
         st.session_state["profile"] = DEFAULT_PROFILE.copy()
-#creates the profile if it doesn't already exist
+
 
 def get_profile():
+    """
+    returns the current profile from the session state
+    """
     init_profile()
     return st.session_state["profile"]
-#returns the current profile from the session state
+
 
 def set_profile(updates: dict):
+    """
+    updates specific fields in the profile without overwriting all the rest
+    """
     init_profile()
     st.session_state["profile"].update(updates)
-#updates specific fields in the profile without overwriting all the rest
+
 
 def profile_banner():
+    """
+    creates a banner that can be called in any page with the city, allergies, risk level and medication of the user
+    """
     p = get_profile()
     if not p["setup_done"] and not p["quiz_done"]:
         st.info(
@@ -91,13 +118,19 @@ def profile_banner():
     with cols[3]:
         st.caption("💊 Medication")
         st.markdown(f"**{p['medication']}**")
-#creates a banner that can be called in any page with the city, allergies, risk level and medication of the user
+
 
 def sensitivity_mult(sensitivity):
+    """
+    converts the sensitivity level into a multiplier that is used to adjust pollen risks
+    """
     return {"Low": 0.5, "Medium": 1.0, "High": 1.5}[sensitivity]
-#converts the sensitivity level into a multiplier that is used to adjust pollen risks
+
 
 def get_level(value, thresholds, mult=1.0):
+    """
+    converts a pollen value into a text (none, low...) based on the user's sensitivity
+    """
     import numpy as np
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return "none"
@@ -107,10 +140,12 @@ def get_level(value, thresholds, mult=1.0):
     elif v < thresholds[2]: return "moderate"
     elif v < thresholds[3]: return "high"
     else:                   return "very high"
-#converts a pollen value into a text (none, low...) based on the user's sensitivity
 
 
 def level_color(level):
+    """
+    matches pollen level with corresponding color
+    """
     return {
         "none":      "#9e9e9e",
         "low":       "#2d6a4f",
@@ -118,9 +153,12 @@ def level_color(level):
         "high":      "#C4532A",
         "very high": "#5b21b6",
     }.get(level, "#9e9e9e")
-#matches pollen level with corresponding color
+
 
 def level_emoji(level):
+    """
+    matches pollen level to its emoji color
+    """
     return {
         "none":      "⚪",
         "low":       "🟢",
@@ -128,4 +166,3 @@ def level_emoji(level):
         "high":      "🔴",
         "very high": "🟣",
     }.get(level, "⚪")
-#matches pollen level to its emoji color
