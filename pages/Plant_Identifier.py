@@ -1,10 +1,4 @@
 """
-Sources: I used Claude AI sonnet 4.6:
-- to make the plant list (common and scientific name) 
-- to generate/correct my code 
-- To find the allergenes and the symptome
-The website was develop on kaggle
-
 This is the Plant Identifier feature of the BlessYou Swiss Pollen app.
 It runs as a Streamlit page and is the only file in this project that
 directly uses the trained ML model (model.onnx).
@@ -29,6 +23,13 @@ Features:
     numpy        : array operations for preprocessing and softmax
     PIL (Pillow) : image loading and resizing
     datetime     : display today's date in the header
+
+Sources: I used Claude AI sonnet 4.6:
+ - to make the plant list (common and scientific name) 
+ - to generate/correct my code 
+ - To find the allergenes and the symptome
+ 
+The model was develop on kaggle
     """
 
 
