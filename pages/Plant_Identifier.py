@@ -126,16 +126,16 @@ COMMON_NAMES = {
   "Viburnum opulus":"Guelder Rose"
 }
 
-"""
-Reverse lookup: common name (lowercase) -> scientific name
-Use in the Search part """
+
+# Reverse lookup: common name (lowercase) -> scientific name
+# Use in the Search part 
+
 
 COMMON_TO_SCI = {v.lower(): k for k, v in COMMON_NAMES.items()} # associate the scientific and english common name of my 93 plants.
 
-"""
-Allergen database for 21 key Swiss allergenic species
-Each entry contains: pollen season, allergy intensity and main symptoms
-"""
+# Allergen database for 21 key Swiss allergenic species
+# Each entry contains: pollen season, allergy intensity and main symptoms
+
 ALLERGEN_INFO = {
   "Betula pendula":{"season":"Mar-May","intensity":"High","symptoms":["Rhinitis","Conjunctivitis","Asthma"]},
   "Corylus avellana":{"season":"Jan-Mar","intensity":"High","symptoms":["Rhinitis","Itching","Asthma"]},
