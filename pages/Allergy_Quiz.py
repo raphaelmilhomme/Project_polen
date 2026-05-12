@@ -15,7 +15,7 @@ Date: May 2026
 
 Sources:
 - Streamlit documentation: https://docs.streamlit.io
-- Claude (Sonnet 4.5): Debugging, Ideas, Structure, code generation
+- Claude (Sonnet 4.5): Debugging, Structure, code generation
 """
 
 # ──────────────────────────────────────────────────────────────────────────────
