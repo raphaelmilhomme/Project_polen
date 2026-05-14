@@ -16,7 +16,7 @@ Date: May 2026
 Sources:
 - Supabase Python client: https://supabase.com/docs/reference/python
 - Streamlit documentation: https://docs.streamlit.io
-- ChatGPT (Claude Sonnet 4): Debugging, Structure, code generation
+- ChatGPT (Claude Sonnet 4.5): Debugging, Structure, code generation
 """
 
 # ──────────────────────────────────────────────────────────────────────────────
